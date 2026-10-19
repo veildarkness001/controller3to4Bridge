@@ -1,0 +1,45 @@
+README.md
+  s_05fa71ed2f92b1::t_60c7f32820b8c0 57-63,134-135
+THIRD_PARTY.md
+  s_5f6a88c5393926::t_3461924cfe0492 23
+include/dt/bluetooth.h
+  s_5f6a88c5393926::t_db2fd6f6b287f6 41-44
+src/platform/ps4/bluetooth.c
+  s_5f6a88c5393926::t_890467e3039d8f 58,69
+src/platform/ps4/bluetooth_native_abi.h
+  s_5f6a88c5393926::t_d51b98835d5289 43-44,50-51,56-58
+src/platform/ps4/bluetooth_native_reports.c
+  s_5f6a88c5393926::t_fcf571b8552966 7-21,29,38,41,62
+src/protocol/ds3_bluetooth.c
+  s_5f6a88c5393926::t_7213a7dcabe782 4-29
+tests/bluetooth_native_reports_test.c
+  s_5f6a88c5393926::t_2917c21023eac8 3,10-11,15,21-26,66-109
+tests/ps4_bluetooth_test.c
+  s_5f6a88c5393926::t_6dbfb675716d93 7-8,52,55,57,69-71,76
+tools/build.py
+  s_5f6a88c5393926::t_9b003bb0e7b93f 136,154,302-303,311-312,314
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "047bcd47410ecbf94a7ede176151f7fdd134ac30",
+  "prompts": {},
+  "sessions": {
+    "s_05fa71ed2f92b1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a153de-643f-7752-822f-82899ec159aa",
+        "model": "unknown"
+      },
+      "human_author": "Ignacio <ignacio.glez.s@gmail.com>"
+    },
+    "s_5f6a88c5393926": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a153da-a118-72a3-a6b1-1722fd4a82e1",
+        "model": "unknown"
+      },
+      "human_author": "Ignacio <ignacio.glez.s@gmail.com>"
+    }
+  }
+}
