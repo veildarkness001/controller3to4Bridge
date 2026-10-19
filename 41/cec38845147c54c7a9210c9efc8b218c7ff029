@@ -1,0 +1,19 @@
+README.md
+  s_702ecb4fb626c2::t_9a46299fd292ce 9,18-20,23,51,54-55,62-64,83-93,95-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "41cec38845147c54c7a9210c9efc8b218c7ff029",
+  "prompts": {},
+  "sessions": {
+    "s_702ecb4fb626c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152f4-fd56-7060-be23-7c80d76456d4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ignacio <708659+ignaciogs@users.noreply.github.com>"
+    }
+  }
+}
