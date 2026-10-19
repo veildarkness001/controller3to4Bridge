@@ -1,0 +1,19 @@
+README.md
+  s_8749dad01f8061::t_4dd4b58b8f88eb 89-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a54c4093730a77c603eff77d7a24b9e9c94199a",
+  "prompts": {},
+  "sessions": {
+    "s_8749dad01f8061": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a153fa-fd8a-75e0-8a4d-adb982314242",
+        "model": "unknown"
+      },
+      "human_author": "Ignacio <ignacio.glez.s@gmail.com>"
+    }
+  }
+}
