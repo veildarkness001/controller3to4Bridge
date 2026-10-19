@@ -86,6 +86,14 @@ AutoRun starts the bridge when GoldHEN is activated; it does not enable GoldHEN 
 
 Both a manual console test and an AutoRun test after restart confirmed the deferred user selection in **0.12.2**: no selector with the DS3 off, selection after PS, and working controller input afterward. After activation, the existing virtual-controller recovery behavior is retained; this change does not remove and recreate the virtual controller on every physical disconnection.
 
+### Why does the DS3 appear as DUALSHOCK 4?
+
+On the tested firmware 13.52, **Settings → Devices → Bluetooth Devices** can show the physical controller as **PLAYSTATION(R)3 Controller**, while holding **PS → Sound/Devices → Turn Off Device** shows the bridge's virtual controller as **DUALSHOCK 4**. This is expected: the two screens obtain their names differently, and the bridge presents the DS3 as a virtual DS4.
+
+Static analysis of firmware 13.52 found that the quick menu falls back to a generic controller label because its device-information path skips custom names for controller types. The virtual-controller creation API used by this bridge has no name parameter. Changing the physical Bluetooth name would therefore not change this label through the current path. The bridge does not modify ShellUI to override it.
+
+In release **1.1.0**, selecting the virtual controller's **DUALSHOCK 4** entry turns off the bridged DS3; pressing **PS** on the DS3 activates it again. One complete cycle was confirmed with development build 0.12.5. If a physical DS4 is also connected, the name alone does not distinguish the two controllers; the power-off cycle with an active physical DS4 remains untested.
+
 ## Run manually from a computer
 
 Both bridges require a PS4 running GoldHEN with its payload loader enabled. The host tools use FTP on port **2121** and the payload loader on port **9090** to upload, start, and inspect a run. Replace `PS4_IP` with your console's address and choose a new run name for each execution. Run one bridge instance at a time, using either USB or Bluetooth.
