@@ -6,7 +6,7 @@ Controller3To4Bridge is an experimental on-console bridge that reads the DS3 ove
 
 This is an independent project, not affiliated with, endorsed by, or sponsored by Sony Interactive Entertainment. DUALSHOCK, PlayStation, and PS4 are trademarks or registered trademarks of Sony Interactive Entertainment Inc. Product names are used to identify compatibility.
 
-**USB and experimental internal Bluetooth are working in hardware tests, including RetroArch gameplay and touchpad emulation over Bluetooth.**
+**The DS3 works wirelessly through the PS4's internal Bluetooth, including in-game control and DS4 touchpad emulation. USB input is also supported and tested.** Bluetooth support remains experimental and specific to the tested firmware.
 
 ## Status and compatibility
 
@@ -15,10 +15,12 @@ This is an independent project, not affiliated with, endorsed by, or sponsored b
 | USB controller input and PS button | Tested on console |
 | USB connection after startup and reconnection | Tested with bridge 0.3.3 |
 | Touchpad movement, click, and Share mapping | Tested with bridge 0.4.0 in the PS4 system keyboard and menus |
-| Internal Bluetooth | User assignment, menu navigation, and PS verified with 0.12.0; RetroArch gameplay and touchpad emulation confirmed with 0.12.1 on firmware 13.52 |
+| Internal Bluetooth | User assignment, menu navigation, and PS verified with 0.12.0; In-game control and touchpad emulation confirmed with 0.12.1 on firmware 13.52 |
+| Bluetooth touchpad emulation | Confirmed in games with 0.12.1; individual gestures, click, and Share have not each been checked separately over Bluetooth |
+| Bluetooth reconnection and long sessions | Physical reconnection and 30–60 minute gameplay tests pending |
 | Rumble and other controller feedback | Not implemented |
 
-The tested setup is **PS4 firmware 13.52, GoldHEN v2.4b18.12, an original Sony DS3, and a mini-USB data cable**. Compatibility with other firmware versions or third-party controllers has not been established.
+The tested setup is **PS4 firmware 13.52, GoldHEN v2.4b18.12, and an original Sony DS3**. USB operation uses a mini-USB data cable. Bluetooth gameplay runs with the cable disconnected and requires the DS3 to be paired to the console beforehand. Compatibility with other firmware versions or third-party controllers has not been established.
 
 A confirmed 30–60 minute gameplay session and a hardware test of input loss while holding Select are still pending. Simulated tests do not establish long-term hardware stability.
 
@@ -46,7 +48,10 @@ The build bootstrap currently supports **Apple Silicon macOS** and requires Pyth
 python3 tools/bootstrap_toolchain.py
 python3 tools/build.py test
 python3 tools/build.py bridge
+python3 tools/build.py bluetooth-bridge
 ```
+
+`bridge` builds the USB bridge; `bluetooth-bridge` builds the native Bluetooth bridge. Build the transport you intend to use.
 
 ELF payloads and build metadata are written to `outputs/`. Dependencies, temporary files, and logs are kept in `work/`. Both directories are excluded from Git. Building does not send or run a payload on the console.
 
@@ -54,7 +59,9 @@ Local tests cover the DS3 protocol, control mapping, sessions, transports, and d
 
 ## Run manually
 
-The USB bridge requires a PS4 running GoldHEN with its payload loader enabled. The host tools use FTP on port **2121** and the payload loader on port **9090** to upload, start, and inspect a run. Replace `PS4_IP` with your console's address and choose a new run name for each execution:
+Both bridges require a PS4 running GoldHEN with its payload loader enabled. The host tools use FTP on port **2121** and the payload loader on port **9090** to upload, start, and inspect a run. Replace `PS4_IP` with your console's address and choose a new run name for each execution. Run one bridge instance at a time, using either USB or Bluetooth.
+
+### USB
 
 ```sh
 python3 tools/console.py stage --kind bridge --host PS4_IP --run usb-test-001
@@ -73,9 +80,34 @@ python3 tools/console.py fetch --kind bridge --host PS4_IP --run usb-test-001
 
 Confirm that the log reports bridge completion, virtual controller removal, and privilege restoration before starting another instance. Keep AutoRun disabled during prototype testing.
 
-Bluetooth diagnostics are separate experimental payloads. Some change controller pairing or temporarily modify firmware-specific behavior; review their implementation and procedure before running them.
+### Internal Bluetooth
 
-The experimental native Bluetooth bridge is built with `python3 tools/build.py bluetooth-bridge` and uses `--kind bluetooth-bridge` in the console tool. It requires a DS3 already paired to the console. The first hardware test, version 0.12.0, stopped after 180 seconds with clean device removal and restoration. Version 0.12.1 runs until manual stop, user logout, or a fatal stream/platform error; short RetroArch gameplay and touchpad emulation have been confirmed, while prolonged stability and physical reconnection remain pending. It temporarily modifies firmware 13.52 HID admission, the native DS3 rejection, and report capacity; it is not yet a production coexistence design for other Bluetooth devices. Controller LEDs and rumble are not configured. Keep AutoRun disabled.
+Build the Bluetooth bridge and use a DS3 already paired to the console. The bridge does not perform initial pairing. With the USB bridge stopped and the DS3 disconnected from USB, start a new Bluetooth run:
+
+```sh
+python3 tools/console.py stage --kind bluetooth-bridge --host PS4_IP --run bt-test-001
+python3 tools/console.py send --kind bluetooth-bridge --host PS4_IP --run bt-test-001
+python3 tools/console.py fetch --kind bluetooth-bridge --host PS4_IP --run bt-test-001
+```
+
+Once the bridge is ready, press PS on the DS3 to connect and complete user assignment if prompted. Version 0.12.1 runs until manual stop, user logout, or a fatal stream/platform error; it has no fixed session time limit. To stop it and inspect cleanup:
+
+```sh
+python3 tools/console.py stop --kind bluetooth-bridge --host PS4_IP --run bt-test-001
+python3 tools/console.py fetch --kind bluetooth-bridge --host PS4_IP --run bt-test-001
+```
+
+Confirm bridge completion, virtual controller removal, Bluetooth disconnection, and restoration before starting another instance. Keep AutoRun disabled.
+
+### Bluetooth hardware results and remaining work
+
+- **0.12.0:** user assignment, D-pad navigation, and PS quick menu verified. The test completed its programmed 180 seconds with 8,235 valid input reports, no invalid reports or read errors, and clean device removal and restoration.
+- **0.12.1:** in-game control and touchpad emulation confirmed with the USB cable disconnected. At five minutes, the log recorded 24,105 valid input reports, no invalid reports or read errors, and no stale-input events. The game title and individual touch gestures were not recorded. Final cleanup for this session has not yet been verified.
+- **Pending:** 30–60 minute gameplay sessions, physical Bluetooth reconnection, startup/restart and rest-mode behavior, controller player LEDs, rumble, and coexistence with other Bluetooth devices. The DS3 LEDs can keep flashing while control works; player LED feedback is not implemented. Powering on the console with the DS3 has not been validated.
+
+The Bluetooth bridge temporarily modifies firmware 13.52 HID admission, the native DS3 rejection, and report capacity. Its current profile changes can affect other supported Bluetooth devices, so coexistence still needs further development and hardware testing. These short sessions do not establish long-term stability.
+
+Bluetooth diagnostics are separate experimental payloads. Some change controller pairing or temporarily modify firmware-specific behavior; review their implementation and procedure before running them.
 
 ## Project structure
 
