@@ -1,0 +1,21 @@
+THIRD_PARTY.md
+  s_702ecb4fb626c2::t_1b45cb282bbfae 1,3,5-12,14,16,18,20,22-25,27,29,31,33
+vendor/control4free/README.md
+  s_702ecb4fb626c2::t_16bb6ac91270be 1,3,5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3afc046b8baaac0e7ce493edb298c8ca2c6a5c19",
+  "prompts": {},
+  "sessions": {
+    "s_702ecb4fb626c2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152f4-fd56-7060-be23-7c80d76456d4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ignacio <708659+ignaciogs@users.noreply.github.com>"
+    }
+  }
+}
