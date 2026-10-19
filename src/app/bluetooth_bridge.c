@@ -23,12 +23,17 @@ int main(void)
     DtTransport transport={0};DtVirtualPad *pad=NULL;DtBridgeStats stats={0};int status=1;
     /* Event caps first; VDA snapshots them and must restore them before BT. */
     if(dt_ps4_bluetooth_create(&transport)!=0)goto done;
+    const DtBridgeConfig config={.should_stop=should_stop,.context=&transport};
+    dt_log("waiting for paired DS3 input; virtual controller not created; press PS on DS3\n");
+    int ready=dt_bridge_wait_for_input(&transport,&config);
+    if(ready<=0) {status=ready<0 ? 1 : 0;goto done;}
+    dt_log("DS3 input ready; creating virtual controller for user selection\n");
     if(dt_virtual_open(&pad)!=0)goto done;
     dt_log("ready for Bluetooth physical input; use PS/X on DS3 to choose user\n");
-    const DtBridgeConfig config={.should_stop=should_stop,.context=&transport};
     status=dt_bridge_run(&transport,pad,&config,&stats);
     if(dt_ps4_bluetooth_status(&transport)!=0) {dt_log("fatal Bluetooth stream/platform error; closing session\n");status=7;}
 done:
+    if(transport.ops && dt_ps4_bluetooth_status(&transport)!=0)status=7;
     if(pad && dt_virtual_close(pad)!=0)status=5;
     if(transport.ops && dt_ps4_bluetooth_destroy(&transport)!=0)status=6;
     dt_log("bridge finished status=%d valid=%llu invalid=%llu sent=%llu connections=%llu read_errors=%llu stale=%llu elapsed_s=%llu\n",status,

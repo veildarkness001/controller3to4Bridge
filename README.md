@@ -49,15 +49,34 @@ python3 tools/bootstrap_toolchain.py
 python3 tools/build.py test
 python3 tools/build.py bridge
 python3 tools/build.py bluetooth-bridge
+python3 tools/build.py release
 ```
 
 `bridge` builds the USB bridge; `bluetooth-bridge` builds the native Bluetooth bridge. Build the transport you intend to use.
+
+`release` builds the Bluetooth release ELF as `outputs/controller-3-to-4-bridge-1.0.0.elf`, using the version in `VERSION`, with a SHA256 checksum alongside it. It preserves the development build metadata used by the console tools. Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ELF payloads and build metadata are written to `outputs/`. Dependencies, temporary files, and logs are kept in `work/`. Both directories are excluded from Git. Building does not send or run a payload on the console.
 
 Local tests cover the DS3 protocol, control mapping, sessions, transports, and diagnostics. C tests use AddressSanitizer and UndefinedBehaviorSanitizer; Python tests cover the console tooling.
 
-## Run manually
+## Install the Bluetooth ELF with GoldHEN
+
+Bluetooth bridge **0.12.2** was tested with GoldHEN v2.4b18.12 on firmware 13.52 using manual payload loading and AutoRun after a console restart. Version 0.12.1 was also tested through PayLoader LaunchPad. The DS3 must already be paired to this PS4; the bridge does not perform initial pairing.
+
+Public release **1.0.0** packages the Bluetooth bridge code from 0.12.2. Its ELF is `controller-3-to-4-bridge-1.0.0.elf`; use this filename in the steps below when installing the release download.
+
+1. Copy `dualshock-to-ps4-bluetooth-bridge-0.12.2.elf` to `/data/payloads/` on the PS4, for example using GoldHEN FTP. No additional runtime configuration files are required; the bridge creates its log directory itself.
+2. Open **GoldHEN → Utilities → PayLoader LaunchPad**, select this ELF, and press **X** once to test it. Run only one bridge instance at a time.
+3. With the DS3 off, the bridge waits in the background without opening user selection. Press **PS** on the wireless DS3: once valid input arrives, the bridge creates the virtual controller and displays user selection. Press **X** to choose a user.
+4. To keep a DS4 and the bridged DS3 working together, assign them to different users. Both worked in this configuration during testing. Assigning the DS3 to the DS4's user was followed by the DS4 losing control; the exact cause has not been established.
+5. Once manual loading works, highlight the same ELF in LaunchPad and press **Square** to add it to AutoRun. On the next restart, activate GoldHEN normally: it starts the bridge automatically. Do not also launch the ELF manually.
+
+AutoRun starts the bridge when GoldHEN is activated; it does not enable GoldHEN or power on the console. When upgrading, disable the previous bridge entry under **GoldHEN → Utilities → AutoRun Queue**, then add the new version from LaunchPad. **Square adds to the queue; it does not disable an existing entry.** Enable only one bridge version. Rest-mode behavior and repeated restart cycles remain untested.
+
+Both a manual console test and an AutoRun test after restart confirmed the deferred user selection in **0.12.2**: no selector with the DS3 off, selection after PS, and working controller input afterward. After activation, the existing virtual-controller recovery behavior is retained; this change does not remove and recreate the virtual controller on every physical disconnection.
+
+## Run manually from a computer
 
 Both bridges require a PS4 running GoldHEN with its payload loader enabled. The host tools use FTP on port **2121** and the payload loader on port **9090** to upload, start, and inspect a run. Replace `PS4_IP` with your console's address and choose a new run name for each execution. Run one bridge instance at a time, using either USB or Bluetooth.
 
@@ -97,13 +116,15 @@ python3 tools/console.py stop --kind bluetooth-bridge --host PS4_IP --run bt-tes
 python3 tools/console.py fetch --kind bluetooth-bridge --host PS4_IP --run bt-test-001
 ```
 
-Confirm bridge completion, virtual controller removal, Bluetooth disconnection, and restoration before starting another instance. Keep AutoRun disabled.
+Confirm bridge completion, virtual controller removal, Bluetooth disconnection, and restoration before starting another instance. Keep AutoRun disabled when testing manual payload loading from a computer.
 
 ### Bluetooth hardware results and remaining work
 
 - **0.12.0:** user assignment, D-pad navigation, and PS quick menu verified. The test completed its programmed 180 seconds with 8,235 valid input reports, no invalid reports or read errors, and clean device removal and restoration.
-- **0.12.1:** in-game control and touchpad emulation confirmed with the USB cable disconnected. At five minutes, the log recorded 24,105 valid input reports, no invalid reports or read errors, and no stale-input events. The game title and individual touch gestures were not recorded. Final cleanup for this session has not yet been verified.
-- **Pending:** 30–60 minute gameplay sessions, physical Bluetooth reconnection, startup/restart and rest-mode behavior, controller player LEDs, rumble, and coexistence with other Bluetooth devices. The DS3 LEDs can keep flashing while control works; player LED feedback is not implemented. Powering on the console with the DS3 has not been validated.
+- **0.12.1:** in-game control and touchpad emulation confirmed with the USB cable disconnected. The session later completed 108 minutes and 17 seconds with 571,837 valid input reports, no invalid reports, read errors, or stale-input events, and clean shutdown/restoration. This duration records bridge uptime, not confirmed continuous gameplay. The game title and individual touch gestures were not recorded.
+- **LaunchPad and AutoRun, 0.12.1:** manual loading from `/data/payloads/` and automatic loading when GoldHEN was activated after a restart both worked. DS3 and DS4 control together was confirmed with different users. At three minutes after AutoRun startup, the log showed 14,514 valid reports, zero invalid reports or read errors, and no stale-input events.
+- **Deferred activation, 0.12.2:** manual loading and AutoRun after restart both waited without user selection while the DS3 was off; PS triggered selection and controller input worked afterward. The manual test closed cleanly after 314 seconds of active bridging with 27,794 valid reports, no invalid reports, read errors, or stale-input events, and verified restoration.
+- **Pending:** 30–60 minute confirmed gameplay sessions, physical Bluetooth reconnection, repeated startup/restart cycles and rest-mode behavior, controller player LEDs, rumble, and broader coexistence with other Bluetooth devices. The DS3 LEDs can keep flashing while control works; player LED feedback is not implemented. Powering on the console with the DS3 has not been validated.
 
 The Bluetooth bridge temporarily modifies firmware 13.52 HID admission, the native DS3 rejection, and report capacity. Its current profile changes can affect other supported Bluetooth devices, so coexistence still needs further development and hardware testing. These short sessions do not establish long-term stability.
 

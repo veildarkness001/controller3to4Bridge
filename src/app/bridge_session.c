@@ -9,6 +9,50 @@
 #define MAX_RETRY_US UINT64_C(5000000)
 #define HEARTBEAT_US UINT64_C(60000000)
 
+int dt_bridge_wait_for_input(DtTransport *t, const DtBridgeConfig *config)
+{
+    if (!t || !t->ops || !t->ops->reconnect || !t->ops->read_report || !config)
+        return -1;
+    uint64_t start = dt_now_us(), previous = start, retry_at = start;
+    uint64_t connected_at = 0;
+    int connected = 0;
+    if (!start) return -1;
+    for (;;) {
+        uint64_t now = dt_now_us();
+        if (!now || now < previous) return -1;
+        previous = now;
+        if ((config->should_stop && config->should_stop(config->context)) ||
+            (config->max_duration_us && now - start >= config->max_duration_us))
+            return 0;
+        if (!connected && now >= retry_at) {
+            connected = t->ops->reconnect(t->context) > 0;
+            now = dt_now_us();
+            if (!now || now < previous) return -1;
+            previous = now;
+            connected_at = now;
+            retry_at = now + RETRY_US;
+        }
+        if (connected) {
+            DtInputReport report = {0};
+            DtControllerState state = {0};
+            int ret = t->ops->read_report(t->context, &report, 20);
+            now = dt_now_us();
+            if (!now || now < previous) return -1;
+            previous = now;
+            /* Stop/fatal status can change while a bounded read is running. */
+            if ((config->should_stop && config->should_stop(config->context)) ||
+                (config->max_duration_us && now - start >= config->max_duration_us))
+                return 0;
+            if (ret > 0 && dt_ds3_decode(&report, &state) == 0) return 1;
+            if (ret < 0 || now - connected_at >= STALE_US) {
+                connected = 0;
+                retry_at = now + RETRY_US;
+            }
+        }
+        usleep(1000);
+    }
+}
+
 int dt_bridge_run(DtTransport *t, DtVirtualPad *pad,
                   const DtBridgeConfig *config, DtBridgeStats *stats)
 {
