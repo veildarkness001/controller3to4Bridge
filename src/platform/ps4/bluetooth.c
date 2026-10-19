@@ -55,6 +55,7 @@ static int reconnect(void *context)
     NativeBluetooth *b=context;
     if(b->fault)return -1;
     if(pump(b,250)<0) {b->fault=1;return -1;}
+    dt_bt_report_player_led(b->fd,&b->reports);
     uint64_t now=dt_now_us();
     return b->reports.completed && b->reports.latest.size==49 && now &&
         now>=b->reports.latest.timestamp_us && now-b->reports.latest.timestamp_us<250000 ? 1 : 0;
@@ -65,6 +66,7 @@ static int read_report(void *context,DtInputReport *out,unsigned timeout_ms)
     if(!out || !timeout_ms || timeout_ms>1000 || b->fault || !b->reports.peer)return -1;
     if(b->reports.valid==b->delivered && pump(b,timeout_ms)<0) {b->fault=1;return -1;}
     if(!b->reports.peer)return -1;
+    dt_bt_report_player_led(b->fd,&b->reports);
     if(b->reports.valid>b->delivered && b->reports.latest.size) {
         *out=b->reports.latest;b->delivered=b->reports.valid;return 1;
     }

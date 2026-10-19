@@ -38,4 +38,8 @@ int dt_ds3_bluetooth_unpack(const uint8_t *data, size_t size,
  * Returns length, or 0 for an invalid framing/output/capacity. */
 size_t dt_ds3_bluetooth_enable(uint8_t *out, size_t capacity,
                               DtBluetoothFraming framing);
+/* Output report 1: one steady player LED (1..4), both motors off.
+ * This is a bridge indicator, not the PS4 user/controller slot. */
+size_t dt_ds3_bluetooth_player_led(uint8_t *out, size_t capacity,
+                                  DtBluetoothFraming framing, unsigned player);
 #endif

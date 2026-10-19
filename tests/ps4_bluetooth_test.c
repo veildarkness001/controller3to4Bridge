@@ -4,7 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 enum { OK,CAP_FAIL,IDENTITY_FAIL,OPEN_FAIL,WRITE_FAIL,REGISTER_FAIL,PROFILE_FAIL,QUEUE_FAIL,ADD_FAIL,
-       MALFORMED,WAIT_FAIL,CLOCK_FAIL,LINK_STUCK,UNREGISTER_FAIL,RESTORE_FAIL };
+       MALFORMED,WAIT_FAIL,CLOCK_FAIL,LINK_STUCK,UNREGISTER_FAIL,RESTORE_FAIL,OUTPUT_FAIL };
+static unsigned outputs;
 static int scenario,opens,closes,registrations,unregistrations,cap_restores,profile_restores,live,disconnects;
 static int queued,setup;static uint64_t now;
 static const uint64_t peer=UINT64_C(0x112233445566);
@@ -48,11 +49,12 @@ int dt_test_ioctl(int fd,unsigned long command,...) {
  if(command==DT_BT_DISCONNECT) {assert(*va_arg(a,uint64_t*)==peer);++disconnects;live=0;va_end(a);return 0;}
  DtBtNativeReportRequest *r=va_arg(a,DtBtNativeReportRequest*);va_end(a);assert(r->peer==peer);
  if(command==DT_BT_SET_FEATURE) {assert(r->size==5 && !memcmp(r->buffer,"\xf4\x42\x03\0\0",5));return 0;}
+ if(command==DT_BT_SET_OUTPUT) {assert(r->size==49 && r->report_id==1 && ((uint8_t*)r->buffer)[10]==2);++outputs;return scenario==OUTPUT_FAIL ? -1 : 0;}
  assert(command==DT_BT_DEQUEUE && r->size==80);uint8_t *p=r->buffer;p[0]=49;p[1]=0x1f;p[2]=1;return 0;
 }
-static void reset(void) {opens=closes=registrations=unregistrations=cap_restores=profile_restores=live=disconnects=setup=0;queued=1;now=1;logs[0]=0;}
+static void reset(void) {opens=closes=registrations=unregistrations=cap_restores=profile_restores=live=disconnects=setup=0;outputs=0;queued=1;now=1;logs[0]=0;}
 int main(void) {
- for(scenario=OK;scenario<=RESTORE_FAIL;++scenario) {
+ for(scenario=OK;scenario<=OUTPUT_FAIL;++scenario) {
   reset();DtTransport t={0};int result=dt_ps4_bluetooth_create(&t);
   if(scenario>=CAP_FAIL && scenario<=ADD_FAIL) {
    assert(result==-1 && !t.ops && opens==closes && cap_restores==1 && profile_restores==1);continue;
@@ -64,10 +66,14 @@ int main(void) {
    assert(t.ops->reconnect(t.context)==1);
    DtInputReport report={0};assert(t.ops->read_report(t.context,&report,4)==1 && report.size==49 && report.data[0]==1);
    assert(t.ops->read_report(t.context,&report,4)==0);
+   assert(!outputs);now+=150000;
+   assert(t.ops->read_report(t.context,&report,4)==0 && outputs==1);
+   assert(t.ops->read_report(t.context,&report,4)==0 && outputs==1);
    if(scenario==OK) {
     queued=2;assert(t.ops->read_report(t.context,&report,20)==-1);
     assert(t.ops->reconnect(t.context)==0);assert(opens==2 && registrations==1);
     queued=1;assert(t.ops->reconnect(t.context)==1);assert(t.ops->read_report(t.context,&report,4)==1);
+    now+=150000;assert(t.ops->read_report(t.context,&report,4)==0 && outputs==2);
    }
   }
   assert(dt_ps4_bluetooth_status(&t)==(scenario==MALFORMED || scenario==WAIT_FAIL || scenario==CLOCK_FAIL ? -1 : 0));

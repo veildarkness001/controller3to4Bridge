@@ -133,7 +133,7 @@ BT_VERSIONS["bluetooth-radio-native-ignore-probe"] = "0.11.0"
 BT_VERSIONS["bluetooth-radio-reports-probe"] = "0.11.1"
 
 
-def payload(target):
+def payload(target, preserve_latest=False):
     release = target == "release"
     bridge = target == "bridge"
     bluetooth_bridge = target in ("bluetooth-bridge", "release")
@@ -151,7 +151,7 @@ def payload(target):
     bluetooth_host = target == "bluetooth-host-probe"
     bluetooth_restore = target == "bluetooth-pairing-restore"
     bluetooth_pairing = target == "bluetooth-pairing-probe" or bluetooth_restore
-    version = (ROOT / "VERSION").read_text().strip() if release else "0.12.2" if bluetooth_bridge else BT_VERSIONS[target] if bluetooth_probe else "0.1.5" if f4 else "0.1.4" if packet64 else "0.1.3" if wait else "0.1.2" if probe else (ROOT / "VERSION").read_text().strip()
+    version = (ROOT / "VERSION").read_text().strip() if release else "0.12.3" if bluetooth_bridge else BT_VERSIONS[target] if bluetooth_probe else "0.1.5" if f4 else "0.1.4" if packet64 else "0.1.3" if wait else "0.1.2" if probe else (ROOT / "VERSION").read_text().strip()
     if not version or any(c not in "0123456789." for c in version):
         raise SystemExit("Invalid VERSION")
     source = ROOT / "work/ps4-payload-sdk-src"
@@ -299,7 +299,8 @@ def payload(target):
     if release:
         output.with_suffix(".build.json").write_text(serialized)
     else:
-        (ROOT / "outputs" / (kind + "-build.json")).write_text(serialized)
+        if not preserve_latest:
+            (ROOT / "outputs" / (kind + "-build.json")).write_text(serialized)
         (ROOT / "outputs" / (kind + "-" + version + "-build.json")).write_text(serialized)
     print(f"Built {output.name}: {len(data)} bytes, SHA256 {sha}; NOT tested on PS4")
 
@@ -307,5 +308,7 @@ def payload(target):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("target", choices=["test", "release", "payload", "bridge", "probe", "probe-wait", "probe64", "probe-f4", "bluetooth-bridge", *BT_VERSIONS])
+    parser.add_argument("--preserve-latest", action="store_true",
+                        help="Write only versioned build metadata; preserve the active run's metadata")
     args = parser.parse_args()
-    tests() if args.target == "test" else payload(args.target)
+    tests() if args.target == "test" else payload(args.target, args.preserve_latest)

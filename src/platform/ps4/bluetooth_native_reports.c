@@ -4,6 +4,21 @@
 #include <string.h>
 #include <sys/ioctl.h>
 
+void dt_bt_report_player_led(int fd,DtBtReportProbe *p)
+{
+    if (!p || !p->peer || !p->completed || !p->latest.size ||
+        !p->enabled_us || p->led_attempted) return;
+    uint64_t now=dt_now_us();
+    if (!now || now<p->enabled_us || now-p->enabled_us<150000) return;
+    uint8_t report[49];
+    size_t size=dt_ds3_bluetooth_player_led(report,sizeof(report),DT_BT_HID_REPORT,1);
+    if (size!=sizeof(report)) return;
+    p->led_attempted=1;
+    DtBtNativeReportRequest request={.peer=p->peer,.buffer=report,.size=size,.report_id=1};
+    int result=ioctl(fd,DT_BT_SET_OUTPUT,&request);
+    dt_log("BT DS3 steady LED1 submitted result=0x%08x; visual confirmation required\n",(uint32_t)result);
+}
+
 void dt_bt_report_probe_event(int fd,uint64_t known,const DtBtNativeEvent *e,DtBtReportProbe *p)
 {
     if(!p || !e || !known || (known>>48) ||
@@ -11,6 +26,7 @@ void dt_bt_report_probe_event(int fd,uint64_t known,const DtBtNativeEvent *e,DtB
     if(e->type==0x1a && !e->status && p->peer!=e->peer_token) {
         p->peer=e->peer_token;p->accepted=p->completed=0;++p->attempts;
         p->latest.size=0;
+        p->led_attempted=0;p->enabled_us=0;
         uint8_t report[5];
         size_t size=dt_ds3_bluetooth_enable(report,sizeof(report),DT_BT_HID_REPORT);
         if(size!=5) {++p->errors;return;}
@@ -19,9 +35,10 @@ void dt_bt_report_probe_event(int fd,uint64_t known,const DtBtNativeEvent *e,DtB
         p->accepted=result==0;
         if(!p->accepted)++p->errors;
         dt_log("BT DS3 F4 submitted result=0x%08x; completion pending\n",(uint32_t)result);
-    } else if(e->peer_token==p->peer && e->type==0x1e && p->accepted) {
+    } else if(e->peer_token==p->peer && e->type==0x1e && p->accepted && !p->completed) {
         ++p->completions;p->completed=e->status==0;
         if(!p->completed)++p->errors;
+        if(p->completed)p->enabled_us=dt_now_us();
         dt_log("BT DS3 F4 completion status=0x%02x success=%d\n",e->status,p->completed);
     } else if(e->peer_token==p->peer && e->type==0x1f && p->accepted) {
         uint8_t packet[80]={0};
@@ -42,5 +59,6 @@ void dt_bt_report_probe_event(int fd,uint64_t known,const DtBtNativeEvent *e,DtB
     } else if(e->peer_token==p->peer && (e->type==6 || e->type==0x19)) {
         p->peer=0;p->accepted=p->completed=0;
         p->latest.size=0;
+        p->led_attempted=0;p->enabled_us=0;
     }
 }

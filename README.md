@@ -54,6 +54,13 @@ python3 tools/build.py release
 
 `bridge` builds the USB bridge; `bluetooth-bridge` builds the native Bluetooth bridge. Build the transport you intend to use.
 
+The current Bluetooth development candidate is **0.12.3**. It requests a steady
+LED 1 after Bluetooth input starts, with both motors off. This indicator is not
+the PS4 user slot. Local tests pass, and steady illumination after user selection
+was confirmed in a first manual console test. Reconnection and longer use with
+this candidate remain unverified. Use `python3 tools/build.py bluetooth-bridge --preserve-latest` to
+build a candidate without replacing the metadata used to manage an active run.
+
 `release` builds the Bluetooth release ELF as `outputs/controller-3-to-4-bridge-1.0.0.elf`, using the version in `VERSION`, with a SHA256 checksum alongside it. It preserves the development build metadata used by the console tools. Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ELF payloads and build metadata are written to `outputs/`. Dependencies, temporary files, and logs are kept in `work/`. Both directories are excluded from Git. Building does not send or run a payload on the console.
@@ -124,7 +131,8 @@ Confirm bridge completion, virtual controller removal, Bluetooth disconnection, 
 - **0.12.1:** in-game control and touchpad emulation confirmed with the USB cable disconnected. The session later completed 108 minutes and 17 seconds with 571,837 valid input reports, no invalid reports, read errors, or stale-input events, and clean shutdown/restoration. This duration records bridge uptime, not confirmed continuous gameplay. The game title and individual touch gestures were not recorded.
 - **LaunchPad and AutoRun, 0.12.1:** manual loading from `/data/payloads/` and automatic loading when GoldHEN was activated after a restart both worked. DS3 and DS4 control together was confirmed with different users. At three minutes after AutoRun startup, the log showed 14,514 valid reports, zero invalid reports or read errors, and no stale-input events.
 - **Deferred activation, 0.12.2:** manual loading and AutoRun after restart both waited without user selection while the DS3 was off; PS triggered selection and controller input worked afterward. The manual test closed cleanly after 314 seconds of active bridging with 27,794 valid reports, no invalid reports, read errors, or stale-input events, and verified restoration.
-- **Pending:** 30–60 minute confirmed gameplay sessions, physical Bluetooth reconnection, repeated startup/restart cycles and rest-mode behavior, controller player LEDs, rumble, and broader coexistence with other Bluetooth devices. The DS3 LEDs can keep flashing while control works; player LED feedback is not implemented. Powering on the console with the DS3 has not been validated.
+- **LED indicator, development candidate 0.12.3:** steady LED 1 and continued controller operation confirmed after PS and user selection in a first manual console test. At 120 seconds, the log showed 10,561 valid reports, no invalid reports or read errors, and no stale-input events. LED 1 indicates the bridge connection; it does not track the PS4 user slot. This change is not included in release 1.0.0.
+- **Pending:** 30–60 minute confirmed gameplay sessions, physical Bluetooth reconnection, repeated startup/restart cycles and rest-mode behavior, player-slot LED mapping, rumble, and broader coexistence with other Bluetooth devices. Release 1.0.0 can keep flashing while control works. Powering on the console with the DS3 has not been validated.
 
 The Bluetooth bridge temporarily modifies firmware 13.52 HID admission, the native DS3 rejection, and report capacity. Its current profile changes can affect other supported Bluetooth devices, so coexistence still needs further development and hardware testing. These short sessions do not establish long-term stability.
 

@@ -40,13 +40,20 @@ int dt_bt_profile_window_end(DtBtProfileWindow *window);
 typedef struct { uint64_t peer; void *buffer; uint64_t size; uint8_t report_id, reserved[7]; } DtBtNativeReportRequest;
 _Static_assert(sizeof(DtBtNativeReportRequest)==32,"native report ABI");
 #define DT_BT_SET_FEATURE UINT32_C(0x80206231)
+/* SetOutputReport 0x12f0 -> type 2 -> ioctl at 0x11be, same request ABI. */
+#define DT_BT_SET_OUTPUT UINT32_C(0x80206230)
 #define DT_BT_DEQUEUE UINT32_C(0x80206233)
 typedef struct {
     uint64_t peer;
     unsigned attempts, completions, valid, invalid, changes, errors;
     int accepted, completed;
+    int led_attempted;
+    uint64_t enabled_us;
     DtControllerState last;
     DtInputReport latest;
 } DtBtReportProbe;
 void dt_bt_report_probe_event(int fd,uint64_t known_peer,const DtBtNativeEvent *event,DtBtReportProbe *probe);
+/* Nonblocking scheduling: one optional LED submission per connection, after
+ * F4 completion, valid input and a 150ms command gap. Failure preserves input. */
+void dt_bt_report_player_led(int fd,DtBtReportProbe *probe);
 #endif
