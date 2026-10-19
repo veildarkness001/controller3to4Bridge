@@ -1,0 +1,35 @@
+tools/build.py
+  s_4eb1e3df9aa0dc::t_e478d97eb3b870 28-29,137,139,154,228-229,265-266,270,299-303,309
+include/dt/bridge_session.h
+  s_c98dee1e2b652e::t_3133ac9544c8b8 13-16
+src/app/bluetooth_bridge.c
+  s_c98dee1e2b652e::t_f34a5fd0b9abe2 26-30,36
+src/app/bridge_session.c
+  s_c98dee1e2b652e::t_0cae0a4577aa0b 12-55
+tests/bridge_activation_test.c
+  s_c98dee1e2b652e::t_abfe341d80f8ad 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e75511d41b2ead5109322df6b82a033397734e11",
+  "prompts": {},
+  "sessions": {
+    "s_4eb1e3df9aa0dc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1536f-0ceb-72a2-875e-aad680ff6a17",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ignacio <ignacio.glez.s@gmail.com>"
+    },
+    "s_c98dee1e2b652e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1533a-58d1-7cb2-badd-8d6b284fa0dd",
+        "model": "unknown"
+      },
+      "human_author": "Ignacio <ignacio.glez.s@gmail.com>"
+    }
+  }
+}
