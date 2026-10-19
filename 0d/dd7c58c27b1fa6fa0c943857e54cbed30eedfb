@@ -1,0 +1,41 @@
+src/app/bluetooth_bridge.c
+  s_8749dad01f8061::t_fb263b349d7e3e 15-17,19,29,35-55,57-59
+include/dt/bridge_session.h
+  s_8749dad01f8061::t_4ddf0bcee4b8fd 17-19
+include/dt/vda_events.h
+  s_8749dad01f8061::t_a51c388243fbba 14-16
+include/dt/virtual_pad.h
+  s_8749dad01f8061::t_07183c10023a75 8-10
+src/app/bridge_session.c
+  s_8749dad01f8061::t_a9ab79dbfba3f1 82-85
+src/output/vda_events.c
+  s_8749dad01f8061::t_44e2e3ddf24259 5-29
+src/platform/ps4/virtual_pad.c
+  s_8749dad01f8061::t_9c7476865a551a 27-35,62-69,193-195,199,202-206,209-229
+tests/bluetooth_menu_lifecycle_test.c
+  s_8749dad01f8061::t_a2698fc13b2d67 1-100
+tests/bridge_session_test.c
+  s_8749dad01f8061::t_48c11d806c70d9 7,64,91,105-109
+tests/vda_events_test.c
+  s_8749dad01f8061::t_d92fd31dafb738 8-22
+tests/virtual_pad_test.c
+  s_8749dad01f8061::t_709313114c317d 17,33,70-75,83,94-109,111,113,117
+tools/build.py
+  s_8749dad01f8061::t_5a3f07084bf382 30,97-104,148-150,165,241-242,311-313,326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ddd7c58c27b1fa6fa0c943857e54cbed30eedfb",
+  "prompts": {},
+  "sessions": {
+    "s_8749dad01f8061": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a153fa-fd8a-75e0-8a4d-adb982314242",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ignacio <ignacio.glez.s@gmail.com>"
+    }
+  }
+}
