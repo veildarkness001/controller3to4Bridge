@@ -1,0 +1,33 @@
+CHANGELOG.md
+  s_8749dad01f8061::t_a9b62724ebc455 3-9
+README.md
+  s_567c3b4e6f4e21::t_c1ddf1e720a840 67,77,79
+VERSION
+  s_8749dad01f8061::t_578194fe0dc9e5 1
+tools/build.py
+  s_8749dad01f8061::t_1f0bad0a0dd853 242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0212c651656f5e0b9ed3550dcff76e503290eea",
+  "prompts": {},
+  "sessions": {
+    "s_567c3b4e6f4e21": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a153fb-c963-7cb3-bf32-24b785e03aed",
+        "model": "unknown"
+      },
+      "human_author": "Ignacio <ignacio.glez.s@gmail.com>"
+    },
+    "s_8749dad01f8061": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a153fa-fd8a-75e0-8a4d-adb982314242",
+        "model": "unknown"
+      },
+      "human_author": "Ignacio <ignacio.glez.s@gmail.com>"
+    }
+  }
+}
