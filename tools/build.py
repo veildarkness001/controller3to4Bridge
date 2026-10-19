@@ -239,7 +239,7 @@ def payload(target, preserve_latest=False):
     if release:
         flags += ["-g0", f"-ffile-prefix-map={ROOT}=."]
     if menu_probe: flags += ["-DDT_VDA_MENU_PROBE"]
-    elif bluetooth_bridge and not release: flags += ["-DDT_VDA_POWER_CONTROL"]
+    elif bluetooth_bridge: flags += ["-DDT_VDA_POWER_CONTROL"]
     if target in ("bluetooth-radio-privileged-probe", "bluetooth-radio-discovery-probe", "bluetooth-radio-incoming-probe", "bluetooth-radio-known-probe", "bluetooth-radio-profile-probe", "bluetooth-radio-link-probe", "bluetooth-radio-native-ignore-probe", "bluetooth-radio-reports-probe"): flags += ["-DDT_BT_EVENT_PRIVILEGES"]
     if target in ("bluetooth-cache-probe", "bluetooth-cache-rejections-probe"): flags += ["-DDT_BT_CACHE_PROBE"]
     if target in ("bluetooth-radio-cache-probe", "bluetooth-radio-privileged-probe", "bluetooth-radio-discovery-probe", "bluetooth-radio-incoming-probe", "bluetooth-radio-known-probe", "bluetooth-radio-profile-probe", "bluetooth-radio-link-probe", "bluetooth-radio-native-ignore-probe", "bluetooth-radio-reports-probe"): flags += ["-DDT_BT_CACHE_ON_EVENT"]

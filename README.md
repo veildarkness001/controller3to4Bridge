@@ -64,7 +64,7 @@ Steady LED 1 was previously confirmed in 0.12.3; it indicates the bridge connect
 not the PS4 user slot. Use `python3 tools/build.py bluetooth-bridge --preserve-latest` to
 build a candidate without replacing the metadata used to manage an active run.
 
-`release` builds the Bluetooth release ELF as `outputs/controller-3-to-4-bridge-1.0.0.elf`, using the version in `VERSION`, with a SHA256 checksum alongside it. It preserves the development build metadata used by the console tools. Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).
+`release` builds the Bluetooth release ELF as `outputs/controller-3-to-4-bridge-1.1.0.elf`, using the version in `VERSION`, with a SHA256 checksum alongside it. It preserves the development build metadata used by the console tools. Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ELF payloads and build metadata are written to `outputs/`. Dependencies, temporary files, and logs are kept in `work/`. Both directories are excluded from Git. Building does not send or run a payload on the console.
 
@@ -74,9 +74,9 @@ Local tests cover the DS3 protocol, control mapping, sessions, transports, and d
 
 Bluetooth bridge **0.12.2** was tested with GoldHEN v2.4b18.12 on firmware 13.52 using manual payload loading and AutoRun after a console restart. Version 0.12.1 was also tested through PayLoader LaunchPad. The DS3 must already be paired to this PS4; the bridge does not perform initial pairing.
 
-Public release **1.0.0** packages the Bluetooth bridge code from 0.12.2. Its ELF is `controller-3-to-4-bridge-1.0.0.elf`; use this filename in the steps below when installing the release download.
+Release **1.1.0** packages the Bluetooth bridge code from 0.12.5, including the steady LED indicator and native menu power-off with PS reactivation. Its ELF is `controller-3-to-4-bridge-1.1.0.elf`; use this filename in the steps below when installing the release download. The development builds were checked in manual console tests; the packaged release ELF has not been run separately on a console.
 
-1. Copy `dualshock-to-ps4-bluetooth-bridge-0.12.2.elf` to `/data/payloads/` on the PS4, for example using GoldHEN FTP. No additional runtime configuration files are required; the bridge creates its log directory itself.
+1. Copy `controller-3-to-4-bridge-1.1.0.elf` to `/data/payloads/` on the PS4, for example using GoldHEN FTP. No additional runtime configuration files are required; the bridge creates its log directory itself.
 2. Open **GoldHEN → Utilities → PayLoader LaunchPad**, select this ELF, and press **X** once to test it. Run only one bridge instance at a time.
 3. With the DS3 off, the bridge waits in the background without opening user selection. Press **PS** on the wireless DS3: once valid input arrives, the bridge creates the virtual controller and displays user selection. Press **X** to choose a user.
 4. To keep a DS4 and the bridged DS3 working together, assign them to different users. Both worked in this configuration during testing. Assigning the DS3 to the DS4's user was followed by the DS4 losing control; the exact cause has not been established.
