@@ -1,0 +1,103 @@
+.gitignore
+  s_230f509a5b74c7::t_86209d20d62a22 1-8
+THIRD_PARTY.md
+  s_83322d3e6745e1::t_3bc40648d41027 1-34
+include/dt/ps4_usb.h
+  s_230f509a5b74c7::t_d141d1a043a703 1-12
+src/app/bluetooth_probe.c
+  s_230f509a5b74c7::t_233b352dc140e2 1-57
+src/app/usb_bridge.c
+  s_935b3a0edd1c4e::t_82b385b62e3b77 1-48
+src/platform/ps4/bluetooth_code_probe.c
+  s_230f509a5b74c7::t_f003c42a484134 1-172
+src/platform/ps4/bluetooth_event_privileges.c
+  s_230f509a5b74c7::t_63834adb75a8f6 1-50
+src/platform/ps4/bluetooth_host_probe.c
+  s_230f509a5b74c7::t_d750aeed11ff7b 1-41
+src/platform/ps4/bluetooth_pairing_probe.c
+  s_230f509a5b74c7::t_bfaec0c4905e7b 1-82
+src/platform/ps4/bluetooth_profile_window.c
+  s_230f509a5b74c7::t_297ef9ca316be3 1-68
+src/platform/ps4/bluetooth_scan_window.c
+  s_230f509a5b74c7::t_593adb9f0d9634 1-35
+src/platform/ps4/usb.c
+  s_230f509a5b74c7::t_ecbdfac1b44af7 1-367
+tests/bluetooth_event_privileges_test.c
+  s_230f509a5b74c7::t_12264f137cf04c 1-32
+tests/bluetooth_host_probe_test.c
+  s_230f509a5b74c7::t_b59afa72a16b36 1-36
+tests/bluetooth_pairing_probe_test.c
+  s_230f509a5b74c7::t_4199323a19dbf8 1-62
+tests/bluetooth_profile_window_test.c
+  s_230f509a5b74c7::t_759539c7863a29 1-35
+tests/bluetooth_scan_window_test.c
+  s_230f509a5b74c7::t_2e154ef66eae44 1-25
+tests/bridge_session_test.c
+  s_7872da367bb819::t_9515bbca518e7a 1-132
+tests/log_test.c
+  s_935b3a0edd1c4e::t_6cdafd8727b48c 1-31
+tests/usb_test.c
+  s_230f509a5b74c7::t_a20c2a6c6965ce 1-238
+tools/build.py
+  s_230f509a5b74c7::t_391410fb367cda 1-302
+tools/console.py
+  s_230f509a5b74c7::t_f357920a45f461 1-113
+vendor/control4free/LICENSE
+  s_935b3a0edd1c4e::t_6343e4e0fd5e84 1-674
+vendor/control4free/c4f_sce.h
+  s_935b3a0edd1c4e::t_65fff17cd22ef0 1-102
+vendor/control4free/c4f_vda.h
+  s_935b3a0edd1c4e::t_efda457570f2fa 1-94
+vendor/control4free/klog_line.c
+  s_935b3a0edd1c4e::t_ca0cfc1473b268 1-60
+README.md
+  s_ee3db0d21fa1a1::t_1fc69364b80b68 1-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e604517cb9dd9cd507630d117bb193d3080e43e",
+  "prompts": {},
+  "sessions": {
+    "s_230f509a5b74c7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14bc0-d909-7862-82b7-fe5dd86c8fbb",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ignacio <708659+ignaciogs@users.noreply.github.com>"
+    },
+    "s_7872da367bb819": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14bac-c5c7-7990-9e74-25ed31e8b682",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ignacio <708659+ignaciogs@users.noreply.github.com>"
+    },
+    "s_83322d3e6745e1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1509d-1e1a-7010-9178-186048038739",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ignacio <708659+ignaciogs@users.noreply.github.com>"
+    },
+    "s_935b3a0edd1c4e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14895-7666-76d3-8c00-99b7903b5646",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ignacio <708659+ignaciogs@users.noreply.github.com>"
+    },
+    "s_ee3db0d21fa1a1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a152e0-1e50-7233-8dad-971f453d7abf",
+        "model": "unknown"
+      },
+      "human_author": "Ignacio <708659+ignaciogs@users.noreply.github.com>"
+    }
+  }
+}
