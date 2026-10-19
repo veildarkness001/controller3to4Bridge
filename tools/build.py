@@ -27,6 +27,7 @@ def tests():
     for name, sources, flags in [
         ("bridge-activation", ["src/app/bridge_session.c", "src/protocol/ds3.c",
          "src/output/ps4_mapping.c", "tests/bridge_activation_test.c"], ["-Dusleep=dt_test_usleep"]),
+        ("bluetooth-menu-lifecycle", ["tests/bluetooth_menu_lifecycle_test.c"], ["-Itests/include"]),
         ("ps4-bluetooth", ["tests/ps4_bluetooth_test.c", "src/platform/ps4/bluetooth_native_reports.c", "src/protocol/ds3_bluetooth.c", "src/protocol/ds3.c"],
          ["-Dopen=dt_test_open", "-Dwrite=dt_test_write", "-Dread=dt_test_read", "-Dclose=dt_test_close", "-Dioctl=dt_test_ioctl", "-Dusleep=dt_test_usleep", "-Dkqueue=dt_test_kqueue", "-Dkevent=dt_test_kevent"]),
         ("bluetooth-native-reports", ["src/platform/ps4/bluetooth_native_reports.c", "src/protocol/ds3_bluetooth.c", "src/protocol/ds3.c", "tests/bluetooth_native_reports_test.c"], ["-Dioctl=dt_test_ioctl"]),
@@ -93,6 +94,14 @@ def tests():
          "src/output/vda_events.c", "vendor/control4free/klog_line.c", "tests/virtual_pad_test.c"],
          ["-Itests/include", "-Dopen=dt_test_open", "-Dread=dt_test_read", "-Dclose=dt_test_close",
           "-Dusleep=dt_test_usleep", "-Ddlopen=dt_test_dlopen", "-Ddlerror=dt_test_dlerror"]),
+        ("virtual-pad-menu-probe", ["src/platform/ps4/virtual_pad.c", "src/output/ps4_mapping.c",
+         "src/output/vda_events.c", "vendor/control4free/klog_line.c", "tests/virtual_pad_test.c"],
+         ["-Itests/include", "-DDT_VDA_MENU_PROBE", "-Dopen=dt_test_open", "-Dread=dt_test_read", "-Dclose=dt_test_close",
+          "-Dusleep=dt_test_usleep", "-Ddlopen=dt_test_dlopen", "-Ddlerror=dt_test_dlerror"]),
+        ("virtual-pad-power-control", ["src/platform/ps4/virtual_pad.c", "src/output/ps4_mapping.c",
+         "src/output/vda_events.c", "vendor/control4free/klog_line.c", "tests/virtual_pad_test.c"],
+         ["-Itests/include", "-DDT_VDA_POWER_CONTROL", "-Dopen=dt_test_open", "-Dread=dt_test_read", "-Dclose=dt_test_close",
+          "-Dusleep=dt_test_usleep", "-Ddlopen=dt_test_dlopen", "-Ddlerror=dt_test_dlerror"]),
     ]:
         binary = build / (name + "-test")
         run(common + flags + sources + ["-o", binary])
@@ -136,7 +145,9 @@ BT_VERSIONS["bluetooth-radio-reports-probe"] = "0.11.1"
 def payload(target, preserve_latest=False):
     release = target == "release"
     bridge = target == "bridge"
-    bluetooth_bridge = target in ("bluetooth-bridge", "release")
+    menu_probe = target == "bluetooth-menu-probe"
+    if menu_probe: preserve_latest = True
+    bluetooth_bridge = target in ("bluetooth-bridge", "bluetooth-menu-probe", "release")
     probe = target.startswith("probe")
     wait = target in ("probe-wait", "probe64", "probe-f4")
     packet64, f4 = target == "probe64", target == "probe-f4"
@@ -151,7 +162,7 @@ def payload(target, preserve_latest=False):
     bluetooth_host = target == "bluetooth-host-probe"
     bluetooth_restore = target == "bluetooth-pairing-restore"
     bluetooth_pairing = target == "bluetooth-pairing-probe" or bluetooth_restore
-    version = (ROOT / "VERSION").read_text().strip() if release else "0.12.3" if bluetooth_bridge else BT_VERSIONS[target] if bluetooth_probe else "0.1.5" if f4 else "0.1.4" if packet64 else "0.1.3" if wait else "0.1.2" if probe else (ROOT / "VERSION").read_text().strip()
+    version = (ROOT / "VERSION").read_text().strip() if release else "0.12.4" if menu_probe else "0.12.5" if bluetooth_bridge else BT_VERSIONS[target] if bluetooth_probe else "0.1.5" if f4 else "0.1.4" if packet64 else "0.1.3" if wait else "0.1.2" if probe else (ROOT / "VERSION").read_text().strip()
     if not version or any(c not in "0123456789." for c in version):
         raise SystemExit("Invalid VERSION")
     source = ROOT / "work/ps4-payload-sdk-src"
@@ -227,6 +238,8 @@ def payload(target, preserve_latest=False):
              "-fvisibility-nodllstorageclass=default", f'-DDT_VERSION="{version}"']
     if release:
         flags += ["-g0", f"-ffile-prefix-map={ROOT}=."]
+    if menu_probe: flags += ["-DDT_VDA_MENU_PROBE"]
+    elif bluetooth_bridge and not release: flags += ["-DDT_VDA_POWER_CONTROL"]
     if target in ("bluetooth-radio-privileged-probe", "bluetooth-radio-discovery-probe", "bluetooth-radio-incoming-probe", "bluetooth-radio-known-probe", "bluetooth-radio-profile-probe", "bluetooth-radio-link-probe", "bluetooth-radio-native-ignore-probe", "bluetooth-radio-reports-probe"): flags += ["-DDT_BT_EVENT_PRIVILEGES"]
     if target in ("bluetooth-cache-probe", "bluetooth-cache-rejections-probe"): flags += ["-DDT_BT_CACHE_PROBE"]
     if target in ("bluetooth-radio-cache-probe", "bluetooth-radio-privileged-probe", "bluetooth-radio-discovery-probe", "bluetooth-radio-incoming-probe", "bluetooth-radio-known-probe", "bluetooth-radio-profile-probe", "bluetooth-radio-link-probe", "bluetooth-radio-native-ignore-probe", "bluetooth-radio-reports-probe"): flags += ["-DDT_BT_CACHE_ON_EVENT"]
@@ -295,6 +308,9 @@ def payload(target, preserve_latest=False):
                                + ["src/platform/ps4/usbd_abi.h"]
                                + (["src/platform/ps4/bluetooth_native_abi.h"] if bluetooth_native or bluetooth_bridge else [])
                                + (["vendor/control4free/c4f_sce.h", "vendor/control4free/c4f_vda.h"] if bridge or bluetooth_bridge else [])}}
+    if menu_probe:
+        meta["diagnostic"] = "native-power-menu-observation-only"
+        meta["retains_klog_reader"] = True
     serialized = json.dumps(meta, indent=2) + "\n"
     if release:
         output.with_suffix(".build.json").write_text(serialized)
@@ -307,7 +323,7 @@ def payload(target, preserve_latest=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("target", choices=["test", "release", "payload", "bridge", "probe", "probe-wait", "probe64", "probe-f4", "bluetooth-bridge", *BT_VERSIONS])
+    parser.add_argument("target", choices=["test", "release", "payload", "bridge", "probe", "probe-wait", "probe64", "probe-f4", "bluetooth-bridge", "bluetooth-menu-probe", *BT_VERSIONS])
     parser.add_argument("--preserve-latest", action="store_true",
                         help="Write only versioned build metadata; preserve the active run's metadata")
     args = parser.parse_args()

@@ -2,6 +2,31 @@
 #include "c4f_vda.h"
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdlib.h>
+
+int dt_vda_menu_event(uint64_t own_device, const char *line)
+{
+    if (!own_device || !line || strstr(line, "[DualShockToPS4]")) return 0;
+    const char *request = strstr(line, "sceMbusDisconnectDevice(");
+    if (request) {
+        request += strlen("sceMbusDisconnectDevice(");
+        while (*request == ' ' || *request == '\t') ++request;
+        if (request[0] != '0' || request[1] != 'x' ||
+            !isxdigit((unsigned char)request[2])) return 0;
+        char *end;
+        errno = 0;
+        unsigned long long device = strtoull(request + 2, &end, 16);
+        if (errno == ERANGE || end - (request + 2) > 16 || !device) return 0;
+        while (*end == ' ' || *end == '\t') ++end;
+        if (*end != ')') return 0;
+        return device == own_device ? 1 : 3;
+    }
+    if (strstr(line, "SCE_MBUS_EVENT_DEVICE_REMOVED") &&
+        c4fKlogDeviceId(line) == own_device) return 2;
+    return 0;
+}
 
 void dt_vda_event_line(DtVdaEvents *events, const char *line, int accept_add)
 {

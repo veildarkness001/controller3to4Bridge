@@ -27,6 +27,12 @@ No external implementation code was incorporated in this phase. Protocol values 
 
 Reference copies are under `work/bluetooth-research/`, with a URL/commit/SHA256 manifest in `sources.json`. AF_BLUETOOTH and the HCI/L2CAP protocols come from the FreeBSD headers in the SDK already credited above; they were candidates for inspection, not assumed support.
 
+## Native power-menu investigation — 2026-10-19
+
+[pad2c, ps5_vpad.c](https://github.com/sub0x00001/pad2c/blob/main/src/ps5_vpad.c), GPL-3.0-or-later, was consulted for the `sceMbusDisconnectDevice(...)` and `SCE_MBUS_EVENT_DEVICE_REMOVED` log formats. Its stated hardware results concern PS5 13.60, not PS4. No implementation was copied. The optional `bluetooth-menu-probe` target only classifies events and observes remote settings; it does not interpret them as a power-off command. The 20-byte remote-setting output layout was checked independently against the locally retained PS4 13.52 library. This diagnostic retains the kernel-log reader until cleanup and always preserves the current latest build metadata.
+
+The native menu's disconnect request for this project's own virtual device was subsequently observed on PS4 13.52 with diagnostic 0.12.4. Candidate 0.12.5 handles that exact device request; it does not infer power-off from remote-setting flags or act on another device's requests. It reuses the existing Bluetooth cleanup and verifies link absence before restarting the activation wait. One manual shutdown/reactivation cycle was then verified on the same PS4: LED off, link absent, cleanup successful, and working input after PS and user selection without reloading the payload. This does not establish repeated-cycle or broader coexistence behavior.
+
 ## Native analysis and pairing — 2026-10-18
 
 Capstone 5.0.6 (https://github.com/capstone-engine/capstone/tree/5.0.6), BSD license and notices included in its sources/distribution: a local disassembly tool in `work/python`, not linked into the payload. Firmware 13.52 libraries and static fragments used in the research are retained only in `work/`; they are not incorporated or redistributed as product sources. The ABI and experimental operations are this project's own implementation in `src/platform/ps4/` and `include/dt/`.

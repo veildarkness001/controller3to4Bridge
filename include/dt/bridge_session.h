@@ -14,7 +14,9 @@ typedef struct {
  * -1: invalid transport or clock. Does not require the initial PS bit, which
  * may already be released by the time a Bluetooth connection is ready. */
 int dt_bridge_wait_for_input(DtTransport *transport, const DtBridgeConfig *config);
-/* One virtual device throughout physical recovery. Caller owns cleanup. */
+enum { DT_BRIDGE_POWER_OFF = 8 };
+/* One virtual device throughout physical recovery. Caller owns cleanup.
+ * DT_BRIDGE_POWER_OFF requests physical disconnect and a fresh activation wait. */
 int dt_bridge_run(DtTransport *transport, DtVirtualPad *pad,
                   const DtBridgeConfig *config, DtBridgeStats *stats);
 #endif

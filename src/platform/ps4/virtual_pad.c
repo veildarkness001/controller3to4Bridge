@@ -24,6 +24,15 @@ struct DtVirtualPad {
     char line[2048];
     size_t used;
     uint64_t users_at;
+#ifdef DT_VDA_POWER_CONTROL
+    int power_off;
+#endif
+#ifdef DT_VDA_MENU_PROBE
+    uint64_t settings_at;
+    uint8_t settings[20];
+    int settings_seen, settings_result_seen;
+    int32_t settings_result;
+#endif
 };
 
 static int restore(DtVirtualPad *p)
@@ -50,6 +59,14 @@ static int read_events(DtVirtualPad *p)
             if (buf[i] == '\n') {
                 p->line[p->used] = 0;
                 dt_vda_event_line(&p->events, p->line, p->accept_add);
+#ifdef DT_VDA_MENU_PROBE
+                int event = dt_vda_menu_event(p->events.device_id, p->line);
+                if (event) dt_log("VDA menu observation event=%d (1=own-request 2=own-removed 3=other-request); no action\n", event);
+#endif
+#ifdef DT_VDA_POWER_CONTROL
+                if (p->events.assigned && dt_vda_menu_event(p->events.device_id, p->line) == 1)
+                    p->power_off = 1;
+#endif
                 p->used = 0;
             } else if (buf[i] != '\r' && p->used < sizeof(p->line) - 1)
                 p->line[p->used++] = buf[i];
@@ -173,13 +190,43 @@ failed:
 int dt_virtual_poll(DtVirtualPad *p)
 {
     if (read_events(p) < 0) { dt_log("VDA log reader lost\n"); return -1; }
+#ifdef DT_VDA_POWER_CONTROL
+    if (p->power_off) return DT_VIRTUAL_POWER_OFF;
+#endif
     if (p->events.assigned && !p->assigned_logged) {
         dt_log("native user assignment confirmed\n");
         p->assigned_logged = 1;
+#if !defined(DT_VDA_MENU_PROBE) && !defined(DT_VDA_POWER_CONTROL)
         close(p->klog_fd); p->klog_fd = -1;
         dt_log("klog reader released after assignment\n");
+#elif defined(DT_VDA_MENU_PROBE)
+        dt_log("VDA menu diagnostic keeps own event reader; requests are observation only\n");
+#else
+        dt_log("native menu power-off enabled for own virtual controller; event reader retained\n");
+#endif
     }
     uint64_t now = dt_now_us();
+#ifdef DT_VDA_MENU_PROBE
+    /* 13.52's wrapper clears 20 bytes and writes only offsets 0..7,12..16.
+     * Observe flags without assigning an unverified power-off meaning. */
+    if (now >= p->settings_at && scePadVirtualDeviceGetRemoteSetting) {
+        uint8_t setting[20] = {0};
+        p->settings_at = now + 20000;
+        int32_t result = scePadVirtualDeviceGetRemoteSetting(p->handle, setting);
+        if (!p->settings_result_seen || result != p->settings_result) {
+            dt_log("VDA menu remote-setting result=0x%08x\n", (uint32_t)result);
+            p->settings_result = result; p->settings_result_seen = 1;
+        }
+        if (!result && (!p->settings_seen || memcmp(setting,p->settings,3) ||
+                        memcmp(setting+12,p->settings+12,5))) {
+            uint32_t auxiliary;
+            memcpy(&auxiliary,setting+12,sizeof(auxiliary));
+            dt_log("VDA menu remote-setting flags=%02x/%02x/%02x auxiliary=0x%08x assigned=%u\n",
+                   setting[0],setting[1],setting[2],auxiliary,setting[16]);
+            memcpy(p->settings,setting,sizeof(setting)); p->settings_seen = 1;
+        }
+    }
+#endif
     if (!p->events.assigned || now < p->users_at) return 0;
     p->users_at = now + 250000;
     C4fUserServiceLoginList users = {{-1, -1, -1, -1}};

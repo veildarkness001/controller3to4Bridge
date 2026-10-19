@@ -12,15 +12,11 @@
 #define STOP_FILE "/data/dualshock_to_ps4/stop"
 static int should_stop(void *context)
 {return access(STOP_FILE,F_OK)==0 || dt_ps4_bluetooth_status(context)!=0;}
-int main(void)
+/* Each activation owns a full, independently unwound privilege/BT/VDA lifetime.
+ * Only a successful menu-request cleanup may start another activation. */
+static int bluetooth_session(DtBridgeStats *stats)
 {
-    int lock=open("/data/dualshock_to_ps4-usb.lock",O_CREAT|O_WRONLY,0666);
-    if(lock<0)return 1;
-    if(flock(lock,LOCK_EX|LOCK_NB)!=0) {close(lock);return 1;}
-    if(dt_log_open_named("bluetooth-bridge.log")!=0) {close(lock);return 1;}
-    dt_log("Bluetooth bridge %s pid=%d firmware=0x%08x duration=unlimited experimental manual-stop\n",DT_VERSION,getpid(),kernel_get_fw_version());
-    (void)unlink(STOP_FILE);
-    DtTransport transport={0};DtVirtualPad *pad=NULL;DtBridgeStats stats={0};int status=1;
+    DtTransport transport={0};DtVirtualPad *pad=NULL;int status=1;
     /* Event caps first; VDA snapshots them and must restore them before BT. */
     if(dt_ps4_bluetooth_create(&transport)!=0)goto done;
     const DtBridgeConfig config={.should_stop=should_stop,.context=&transport};
@@ -30,15 +26,36 @@ int main(void)
     dt_log("DS3 input ready; creating virtual controller for user selection\n");
     if(dt_virtual_open(&pad)!=0)goto done;
     dt_log("ready for Bluetooth physical input; use PS/X on DS3 to choose user\n");
-    status=dt_bridge_run(&transport,pad,&config,&stats);
+    status=dt_bridge_run(&transport,pad,&config,stats);
     if(dt_ps4_bluetooth_status(&transport)!=0) {dt_log("fatal Bluetooth stream/platform error; closing session\n");status=7;}
 done:
     if(transport.ops && dt_ps4_bluetooth_status(&transport)!=0)status=7;
     if(pad && dt_virtual_close(pad)!=0)status=5;
     if(transport.ops && dt_ps4_bluetooth_destroy(&transport)!=0)status=6;
+    return status;
+}
+int main(void)
+{
+    int lock=open("/data/dualshock_to_ps4-usb.lock",O_CREAT|O_WRONLY,0666);
+    if(lock<0)return 1;
+    if(flock(lock,LOCK_EX|LOCK_NB)!=0) {close(lock);return 1;}
+    if(dt_log_open_named("bluetooth-bridge.log")!=0) {close(lock);return 1;}
+    dt_log("Bluetooth bridge %s pid=%d firmware=0x%08x duration=unlimited experimental manual-stop\n",DT_VERSION,getpid(),kernel_get_fw_version());
+    (void)unlink(STOP_FILE);
+    DtBridgeStats total={0};int status;
+    for(;;) {
+        DtBridgeStats stats={0};
+        status=bluetooth_session(&stats);
+        total.valid+=stats.valid;total.invalid+=stats.invalid;total.sent+=stats.sent;
+        total.connections+=stats.connections;total.read_errors+=stats.read_errors;
+        total.stale+=stats.stale;total.elapsed_us+=stats.elapsed_us;
+        if(status!=DT_BRIDGE_POWER_OFF)break;
+        dt_log("menu power-off cleanup complete; Bluetooth link absent; ready for a new DS3 activation\n");
+        if(access(STOP_FILE,F_OK)==0) {status=0;break;}
+    }
     dt_log("bridge finished status=%d valid=%llu invalid=%llu sent=%llu connections=%llu read_errors=%llu stale=%llu elapsed_s=%llu\n",status,
-        (unsigned long long)stats.valid,(unsigned long long)stats.invalid,(unsigned long long)stats.sent,
-        (unsigned long long)stats.connections,(unsigned long long)stats.read_errors,(unsigned long long)stats.stale,
-        (unsigned long long)(stats.elapsed_us/1000000));
+        (unsigned long long)total.valid,(unsigned long long)total.invalid,(unsigned long long)total.sent,
+        (unsigned long long)total.connections,(unsigned long long)total.read_errors,(unsigned long long)total.stale,
+        (unsigned long long)(total.elapsed_us/1000000));
     dt_log_close();close(lock);return status;
 }

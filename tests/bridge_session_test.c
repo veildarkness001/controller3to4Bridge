@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-enum { RECOVER, SILENT, INVALID, ABSENT, LONG, CYCLES, SEND_FAIL, LOGOUT, POLL_FAIL, CLOCK_FAIL };
+enum { RECOVER, SILENT, INVALID, ABSENT, LONG, CYCLES, SEND_FAIL, LOGOUT, POLL_FAIL, CLOCK_FAIL, POWER_OFF };
 static int scenario, connected, attempts, heartbeats, neutral_seen, resumed, errors;
 static uint64_t now, end, last_attempt, last_send, maximum_gap, drop_at;
 static unsigned sends, acquisition_reads, touches;
@@ -61,6 +61,7 @@ int dt_virtual_poll(DtVirtualPad *p)
     if (now > 1000000) {
         if (scenario == LOGOUT) return 1;
         if (scenario == POLL_FAIL) return -1;
+        if (scenario == POWER_OFF) return DT_VIRTUAL_POWER_OFF;
     }
     return 0;
 }
@@ -87,7 +88,7 @@ int main(void)
 {
     const DtTransportOps ops = {.read_report = read_report, .reconnect = reconnect};
     DtTransport t = {.ops = &ops};
-    for (scenario = RECOVER; scenario <= CLOCK_FAIL; ++scenario) {
+    for (scenario = RECOVER; scenario <= POWER_OFF; ++scenario) {
         now = 1; end = 7000000; last_attempt = last_send = maximum_gap = 0;
         attempts = sends = heartbeats = neutral_seen = resumed = errors = acquisition_reads = 0;
         touches = 0;
@@ -101,6 +102,11 @@ int main(void)
         if (scenario == SEND_FAIL) { assert(ret == 4 && !stats.sent); continue; }
         if (scenario == POLL_FAIL) { assert(ret == 3); continue; }
         if (scenario == CLOCK_FAIL) { assert(ret == 1); continue; }
+        if (scenario == POWER_OFF) {
+            assert(ret == DT_BRIDGE_POWER_OFF && now < end && stats.sent == sends);
+            assert(now > 1000000 && now < 1002000);
+            continue;
+        }
         assert(ret == 0 && stats.sent == sends);
         if (scenario == RECOVER) {
             assert(stats.connections == 2 && stats.read_errors == 1);

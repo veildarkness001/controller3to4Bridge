@@ -14,6 +14,7 @@ static uint64_t now, first_stamp;
 static uint8_t first_count;
 static char log_queue[2048];
 static int sent;
+static int log_closes, setting_calls, setting_error;
 
 uint64_t dt_now_us(void) { return now += 1000; }
 void dt_log(const char *format, ...) { (void)format; }
@@ -29,7 +30,7 @@ void *dt_test_dlopen(const char *name, int flags)
 char *dt_test_dlerror(void) { return "test failure"; }
 int dt_test_open(const char *name, int flags, ...)
 { (void)flags; assert(!strcmp(name,"/dev/klog")); if (scenario == LOG_FAIL) { errno = EBUSY; return -1; } return 100; }
-int dt_test_close(int fd) { assert(fd == 100); return 0; }
+int dt_test_close(int fd) { assert(fd == 100); ++log_closes; return 0; }
 int dt_test_usleep(useconds_t delay) { now += delay; return 0; }
 ssize_t dt_test_read(int fd, void *buf, size_t size)
 {
@@ -66,6 +67,12 @@ int32_t scePadVirtualDeviceInsertData(int32_t handle, const void *data)
 }
 int32_t scePadVirtualDeviceDeleteDevice(int32_t handle)
 { assert(handle == 0x7030d); ++deletes; return scenario == DELETE_FAIL ? -1 : 0; }
+int32_t scePadVirtualDeviceGetRemoteSetting(int32_t handle, void *data)
+{
+    assert(handle == 0x7030d); ++setting_calls;
+    memset(data,0xff,20); /* Unknown flags must never be treated as a command. */
+    return setting_error ? -1 : 0;
+}
 int32_t sceUserServiceGetLoginUserIdList(C4fUserServiceLoginList *list)
 { for (int i=0;i<4;++i) list->userId[i] = -1; if (!poll_logout) list->userId[0] = 0x123; return 0; }
 
@@ -73,6 +80,7 @@ int main(void)
 {
     for (scenario=SAVE_FAIL;scenario<=DELETE_FAIL;++scenario) {
         adds=deletes=restored_auth=restored_caps=sent=poll_logout=0; now=1000; log_queue[0]=0;
+        log_closes=setting_calls=setting_error=0;
         DtVirtualPad *p = NULL;
         int ret = dt_virtual_open(&p);
         if (scenario < SUCCESS) {
@@ -83,11 +91,30 @@ int main(void)
             ScePadData sample; dt_ps4_neutral(&sample);
             assert(dt_virtual_send(p,&sample)==0 && dt_virtual_send(p,&sample)==0);
             assert(dt_virtual_poll(p)==0);
+#ifdef DT_VDA_MENU_PROBE
+            assert(!log_closes && setting_calls == 1);
+            strcpy(log_queue,"sceMbusDisconnectDevice(0x7030d)\nSCE_MBUS_EVENT_DEVICE_REMOVED [DeviceId:0x7030d]\n");
+            setting_error=1; now+=30000;
+            assert(dt_virtual_poll(p)==0 && !deletes && !log_closes);
+            assert(setting_calls==2);
+#elif defined(DT_VDA_POWER_CONTROL)
+            assert(!log_closes && !setting_calls);
+            strcpy(log_queue,"sceMbusDisconnectDevice(0x70301)\n[DualShockToPS4] sceMbusDisconnectDevice(0x7030d)\n");
+            assert(dt_virtual_poll(p)==0 && !deletes);
+            strcpy(log_queue,"sceMbusDisconnectDevice(0x7030d)\nsceMbusDisconnectDevice(0x7030d)\n");
+            assert(dt_virtual_poll(p)==DT_VIRTUAL_POWER_OFF && !deletes);
+            assert(dt_virtual_poll(p)==DT_VIRTUAL_POWER_OFF && !deletes);
+#else
+            assert(log_closes==1 && !setting_calls);
+#endif
             poll_logout=1; now += 300000;
+#ifndef DT_VDA_POWER_CONTROL
             assert(dt_virtual_poll(p)==1);
+#endif
             int cleanup = dt_virtual_close(p);
             assert((cleanup != 0) == (scenario == DELETE_FAIL));
             assert(deletes == (scenario == DELETE_FAIL ? 3 : 1));
+            assert(log_closes==1);
         }
         assert(restored_auth == (scenario != SAVE_FAIL));
         assert(restored_caps == (scenario != SAVE_FAIL));

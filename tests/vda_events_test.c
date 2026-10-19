@@ -5,6 +5,21 @@
 
 int main(void)
 {
+    assert(dt_vda_menu_event(0x7030d, "sceMbusDisconnectDevice( 0x7030d )") == 1);
+    assert(dt_vda_menu_event(0x7030d, "sceMbusDisconnectDevice(0x70301)") == 3);
+    assert(dt_vda_menu_event(0x7030d, "sceMbusDisconnectDevice(0x7030d0)") == 3);
+    assert(dt_vda_menu_event(0x7030d, "SCE_MBUS_EVENT_DEVICE_REMOVED [DeviceId:0x7030d]") == 2);
+    assert(!dt_vda_menu_event(0x7030d, "SCE_MBUS_EVENT_DEVICE_REMOVED [DeviceId:0x70301]"));
+    assert(!dt_vda_menu_event(0x7030d, "[DualShockToPS4] sceMbusDisconnectDevice(0x7030d)"));
+    assert(!dt_vda_menu_event(0, "sceMbusDisconnectDevice(0x7030d)"));
+    assert(!dt_vda_menu_event(0x7030d, NULL));
+    const char *malformed[] = {"", "sceMbusDisconnectDevice(", "sceMbusDisconnectDevice(0",
+        "sceMbusDisconnectDevice(0x", "sceMbusDisconnectDevice(0x7030d",
+        "sceMbusDisconnectDevice(0x-7030d)", "sceMbusDisconnectDevice(0x7030dz)",
+        "sceMbusDisconnectDevice(0x1000000000007030d)", "sceMbusDisconnectDevice(0x0000000000007030d)",
+        "sceMbusDisconnectDevice(0x0)"};
+    for (unsigned i=0;i<sizeof(malformed)/sizeof(malformed[0]);++i)
+        assert(!dt_vda_menu_event(0x7030d, malformed[i]));
     DtVdaEvents e = {0};
     strcpy(e.marker, "test-vda-marker-1");
     const char *added = "#LOGIN MGR# Receive Event : SCE_MBUS_EVENT_DEVICE_ADDED [DeviceId:0x7030d][type:1][subType:2]";

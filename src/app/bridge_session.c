@@ -79,6 +79,10 @@ int dt_bridge_run(DtTransport *t, DtVirtualPad *pad,
             dt_log("session time limit reached\n"); return 0;
         }
         int ret = dt_virtual_poll(pad);
+        if (ret == DT_VIRTUAL_POWER_OFF) {
+            dt_log("native menu power-off requested for own virtual controller\n");
+            return DT_BRIDGE_POWER_OFF;
+        }
         if (ret != 0) return ret < 0 ? 3 : 0;
         if (!connected && now >= retry_at) {
             ret = t->ops->reconnect(t->context);
