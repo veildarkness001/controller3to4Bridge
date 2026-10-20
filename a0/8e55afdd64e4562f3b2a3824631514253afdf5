@@ -1,0 +1,23 @@
+CHANGELOG.md
+  s_1b16b31caab1f1::t_ba5c4d3c3d00d6 3-10
+README.md
+  s_1b16b31caab1f1::t_72107ab506a320 7,31,51
+VERSION
+  s_1b16b31caab1f1::t_df9b2e6d82a76b 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a08e55afdd64e4562f3b2a3824631514253afdf5",
+  "prompts": {},
+  "sessions": {
+    "s_1b16b31caab1f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a158ac-1c49-7e12-91ab-26ca31f027d0",
+        "model": "unknown"
+      },
+      "human_author": "veil.darkness <veil.darkness@proton.me>"
+    }
+  }
+}
