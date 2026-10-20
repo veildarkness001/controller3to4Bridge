@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0] - 2026-10-20
+
+- Unify USB and internal Bluetooth support in one release ELF, with automatic USB priority and a fresh controller session when changing transport.
+- Include the transport switching and cleanup fixes developed in the 1.2.x candidates below. Bluetooth still requires an already paired DS3.
+- Simplify installation instructions to download the desired version from Releases.
+
+The bridge implementation was checked on PS4 in candidate 1.2.3: USB → Bluetooth → USB → Bluetooth, working game menus, brief wireless gameplay, and verified clean shutdown. The 1.3.0 build updates the version without changing that implementation; it has not been separately tested on console. Changing transport may require user selection again; longer sessions, rest mode, and compatibility with other games remain unverified.
+
 ## [1.2.3] - Unreleased
 
 - Select USB before starting a Bluetooth backend. Wired sessions no longer retain a Bluetooth listener, registration, or temporary Bluetooth privilege/profile state.

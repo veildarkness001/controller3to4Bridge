@@ -4,7 +4,7 @@
 
 Controller3To4Bridge lets you use a Sony DualShock 3 on a PS4 running GoldHEN, with standard controls and basic touchpad emulation. It runs on the console, so you can play without a computer, phone, or network connection.
 
-**One ELF supports both USB and internal Bluetooth** in version 1.2.3. Connect the DS3 with a mini-USB data cable for wired play, or disconnect the cable and press **PS** for Bluetooth. USB takes priority when a cable is connected. The bridge clears held inputs and starts a fresh controller session when changing transport. Choose your user again if prompted; the ELF stays running.
+**One ELF supports both USB and internal Bluetooth** in version 1.3.0. Connect the DS3 with a mini-USB data cable for wired play, or disconnect the cable and press **PS** for Bluetooth. USB takes priority when a cable is connected. The bridge clears held inputs and starts a fresh controller session when changing transport. Choose your user again if prompted; the ELF stays running.
 
 The 1.2.3 ELF was tested with **PS4 firmware 13.52, GoldHEN v2.4b18.12, and an original Sony DS3**: USB → Bluetooth → USB → Bluetooth, user selection and game menus after each change, brief wireless gameplay, and clean shutdown. Longer sessions, rest mode, other firmware versions, and third-party controllers remain unverified.
 
@@ -28,7 +28,7 @@ Release Select to use the right stick normally again. Touchpad emulation support
 
 ## Install with GoldHEN and enable AutoRun
 
-1. Use `controller-3-to-4-bridge-1.2.3.elf`, available locally in `outputs/`. The same file works for both connection types. Published downloads are listed in [Releases](https://github.com/veildarkness001/controller3to4Bridge/releases).
+1. Download the version you want from [Releases](https://github.com/veildarkness001/controller3to4Bridge/releases).
 2. Enable GoldHEN's FTP server. From an FTP client on a computer on the same network, connect to the PS4's IP address on port **2121** and copy the ELF to **`/data/payloads/`**.
 3. On the PS4, open **GoldHEN → Utilities → PayLoader LaunchPad**, select the ELF, and press **X** to start it once.
 4. Connect the DS3 with a mini-USB data cable, or press **PS** on an already paired wireless DS3. Choose a user when prompted. If you also use a DS4, assign it to a different user.
@@ -48,7 +48,7 @@ You need **Python 3**, the ELF, and a computer on the same network as the PS4.
 2. Open a terminal in the folder containing the ELF. Replace `PS4_IP` below with the console's IP address and run the command once:
 
 ```sh
-python3 -c "import socket; from pathlib import Path; data = Path('controller-3-to-4-bridge-1.2.3.elf').read_bytes(); s = socket.create_connection(('PS4_IP', 9090), timeout=8); s.sendall(data); s.shutdown(socket.SHUT_WR); s.close()"
+python3 -c "import socket; from pathlib import Path; data = Path('controller-3-to-4-bridge-1.3.0.elf').read_bytes(); s = socket.create_connection(('PS4_IP', 9090), timeout=8); s.sendall(data); s.shutdown(socket.SHUT_WR); s.close()"
 ```
 
 Use `python` instead of `python3` if that is your Python 3 command.
@@ -94,5 +94,3 @@ The protocol and API references above informed this project's implementation. In
 ## License
 
 GPL-3.0. See [LICENSE](LICENSE) and [THIRD_PARTY.md](THIRD_PARTY.md) for licensing details and third-party notices.
-
-This independent project is not affiliated with or endorsed by Sony Interactive Entertainment. DUALSHOCK, PlayStation, and PS4 are trademarks or registered trademarks of Sony Interactive Entertainment Inc.
