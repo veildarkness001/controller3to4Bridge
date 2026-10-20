@@ -39,7 +39,8 @@ class ConsoleTests(unittest.TestCase):
                                             ('usb-bridge', 'usb-bridge', '0.3.2', b'bridge'),
                                             ('usb-probe', 'usb-probe', '0.1.2', b'probe'),
                                             ('bluetooth-probe', 'bluetooth-probe', '0.1.0', b'bluetooth'),
-                                            ('bluetooth-bridge', 'bluetooth-bridge', '0.12.0', b'bt-bridge')]:
+                                            ('bluetooth-bridge', 'bluetooth-bridge', '0.12.0', b'bt-bridge'),
+                                            ('unified-bridge', 'unified-bridge', '1.2.0', b'unified')]:
             (self.root / f'outputs/{kind}-build.json').write_text(json.dumps(
                 {'version':version,'sha256':hashlib.sha256(data).hexdigest()}))
             (self.root / f'outputs/dualshock-to-ps4-{label}-{version}.elf').write_bytes(data)
@@ -83,6 +84,21 @@ class ConsoleTests(unittest.TestCase):
         data = json.loads(record.read_text()); data['state'] = 'sent'; record.write_text(json.dumps(data))
         with patch.object(console.socket, 'create_connection') as connect:
             with self.assertRaises(SystemExit): self.invoke('send')
+            connect.assert_not_called()
+
+    def test_unified_bridge_artifact_log_stop_and_duplicate_send(self):
+        self.invoke('stage', 'unified-bridge')
+        self.assertEqual(FakeFTP.files['dualshock-to-ps4-unified-bridge-1.2.0.elf'], b'unified')
+        FakeFTP.files['/data/dualshock_to_ps4/unified-bridge.log'] = b'Unified bridge 1.2.0\nbridge finished status=0\n'
+        self.invoke('fetch', 'unified-bridge')
+        record_path = self.root/'work/runs/test/deployment.json'
+        record = json.loads(record_path.read_text())
+        self.assertTrue(record['execution_confirmed'] and record['finished'])
+        self.invoke('stop', 'unified-bridge')
+        self.assertEqual(FakeFTP.files['/data/dualshock_to_ps4/stop'], b'stop\n')
+        record['state'] = 'sent'; record_path.write_text(json.dumps(record))
+        with patch.object(console.socket, 'create_connection') as connect:
+            with self.assertRaises(SystemExit): self.invoke('send', 'unified-bridge')
             connect.assert_not_called()
 
     def test_probe_is_separate_from_original_diagnostic(self):

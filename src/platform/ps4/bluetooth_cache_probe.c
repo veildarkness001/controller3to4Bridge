@@ -69,8 +69,9 @@ int dt_ps4_bluetooth_link_probe(uint64_t peer)
         if(kernel_copyout(slot+0x30,&token,8)!=0) return 1;
         if((token&UINT64_C(0xffffffffffff))!=peer) continue;
         uint32_t flags=0,pending=0,deferred=0,blocked=0;
-        uint16_t psm[8]={0}; uint32_t channel_flags[8]={0};
+        uint16_t hci_handle=0, psm[8]={0}; uint32_t channel_flags[8]={0};
         if(kernel_copyout(slot+0x18,&flags,4)!=0 ||
+           kernel_copyout(slot+0x48,&hci_handle,2)!=0 ||
            kernel_copyout(slot+0x12d0,&pending,4)!=0 ||
            kernel_copyout(slot+0x12e4,&deferred,4)!=0 ||
            kernel_copyout(slot+0x12e8,&blocked,4)!=0) return 1;
@@ -79,6 +80,8 @@ int dt_ps4_bluetooth_link_probe(uint64_t peer)
                kernel_copyout(slot+0x650+j*0x90+8,&channel_flags[j],4)!=0) return 1;
         if(kernel_copyout(slot+0x30,&confirm,8)!=0 || confirm!=token) return 1;
         dt_log("BT DS3 link flags=0x%x pending=0x%x deferred=0x%x blocked=0x%x\n",flags,pending,deferred,blocked);
+        dt_log("BT DS3 link HCI_handle_present=%d connecting_bit=%d exact_identity_match=%d\n",
+               hci_handle!=0,(flags&1)!=0,token==peer);
         unsigned channels=0;
         for(unsigned j=0;j<8;++j) if(psm[j]) {
             ++channels;dt_log("BT DS3 channel psm=0x%x flags=0x%x\n",psm[j],channel_flags[j]);

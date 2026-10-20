@@ -45,6 +45,7 @@ int dt_bridge_wait_for_input(DtTransport *t, const DtBridgeConfig *config)
                 return 0;
             if (ret > 0 && dt_ds3_decode(&report, &state) == 0) return 1;
             if (ret < 0 || now - connected_at >= STALE_US) {
+                if (config->restart_on_input_loss) return DT_BRIDGE_INPUT_LOST;
                 connected = 0;
                 retry_at = now + RETRY_US;
             }
@@ -138,6 +139,10 @@ int dt_bridge_run(DtTransport *t, DtVirtualPad *pad,
                 dt_log("InsertData failed: 0x%08x\n", (uint32_t)ret); return 4;
             }
             ++stats->sent; next_report = now + REPORT_US;
+        }
+        if (force_neutral && config->restart_on_input_loss) {
+            dt_log("physical input lost; neutral sent; restart activation after full cleanup\n");
+            return DT_BRIDGE_INPUT_LOST;
         }
         if (now >= next_log) {
             dt_log("session heartbeat elapsed_s=%llu connected=%d valid=%llu invalid=%llu sent=%llu connections=%llu read_errors=%llu stale=%llu\n",

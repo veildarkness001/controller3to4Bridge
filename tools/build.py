@@ -25,6 +25,10 @@ def tests():
     common = ["clang", "-std=gnu11", "-Wall", "-Wextra", "-Werror",
               "-fsanitize=address,undefined", "-Iinclude", "-Ivendor/control4free"]
     for name, sources, flags in [
+        ("bluetooth-link-state", ["tests/bluetooth_link_state_test.c"], ["-Itests/include"]),
+        ("auto-transport", ["src/transport/auto.c", "src/app/bridge_session.c", "src/protocol/ds3.c",
+         "src/output/ps4_mapping.c", "tests/auto_transport_test.c"], ["-Dusleep=dt_test_usleep"]),
+        ("unified-lifecycle", ["tests/unified_lifecycle_test.c"], ["-Itests/include"]),
         ("bridge-activation", ["src/app/bridge_session.c", "src/protocol/ds3.c",
          "src/output/ps4_mapping.c", "tests/bridge_activation_test.c"], ["-Dusleep=dt_test_usleep"]),
         ("bluetooth-menu-lifecycle", ["tests/bluetooth_menu_lifecycle_test.c"], ["-Itests/include"]),
@@ -112,6 +116,7 @@ def tests():
 
 BT_VERSIONS = {
     "bluetooth-probe": "0.1.0", "bluetooth-native-probe": "0.2.0",
+    "bluetooth-link-state-probe": "0.13.1",
     "bluetooth-privileged-probe": "0.2.1", "bluetooth-code-probe": "0.3.0",
     "bluetooth-code-detail-probe": "0.3.1", "bluetooth-code-table-probe": "0.3.2",
     "bluetooth-admission-probe": "0.4.0", "bluetooth-code-driver-probe": "0.4.1",
@@ -147,7 +152,8 @@ def payload(target, preserve_latest=False):
     bridge = target == "bridge"
     menu_probe = target == "bluetooth-menu-probe"
     if menu_probe: preserve_latest = True
-    bluetooth_bridge = target in ("bluetooth-bridge", "bluetooth-menu-probe", "release")
+    unified = target in ("unified-bridge", "release")
+    bluetooth_bridge = target in ("bluetooth-bridge", "bluetooth-menu-probe") or unified
     probe = target.startswith("probe")
     wait = target in ("probe-wait", "probe64", "probe-f4")
     packet64, f4 = target == "probe64", target == "probe-f4"
@@ -162,7 +168,7 @@ def payload(target, preserve_latest=False):
     bluetooth_host = target == "bluetooth-host-probe"
     bluetooth_restore = target == "bluetooth-pairing-restore"
     bluetooth_pairing = target == "bluetooth-pairing-probe" or bluetooth_restore
-    version = (ROOT / "VERSION").read_text().strip() if release else "0.12.4" if menu_probe else "0.12.5" if bluetooth_bridge else BT_VERSIONS[target] if bluetooth_probe else "0.1.5" if f4 else "0.1.4" if packet64 else "0.1.3" if wait else "0.1.2" if probe else (ROOT / "VERSION").read_text().strip()
+    version = (ROOT / "VERSION").read_text().strip() if unified else "0.12.4" if menu_probe else "0.12.5" if bluetooth_bridge else BT_VERSIONS[target] if bluetooth_probe else "0.1.5" if f4 else "0.1.4" if packet64 else "0.1.3" if wait else "0.1.2" if probe else (ROOT / "VERSION").read_text().strip()
     if not version or any(c not in "0123456789." for c in version):
         raise SystemExit("Invalid VERSION")
     source = ROOT / "work/ps4-payload-sdk-src"
@@ -187,14 +193,14 @@ def payload(target, preserve_latest=False):
     # Build the pinned CRT with the native Apple clang cross-compiler and LLD.
     run(["make", "-C", source / "crt", f"CC={clang}", f"LD={linker}",
          f"LLVM_CONFIG={config}", f"DESTDIR={sdk}", "install"])
-    kind = "bluetooth-bridge" if bluetooth_bridge else "bluetooth-probe" if bluetooth_probe else "usb-probe" if probe else "usb-bridge" if bridge else "usb-diagnostic"
+    kind = "unified-bridge" if unified else "bluetooth-bridge" if bluetooth_bridge else "bluetooth-probe" if bluetooth_probe else "usb-probe" if probe else "usb-bridge" if bridge else "usb-diagnostic"
     build = ROOT / "work/build" / kind
     build.mkdir(parents=True, exist_ok=True)
     files = ["src/app/usb_diagnostic.c", "src/protocol/ds3.c",
              "src/platform/ps4/usb.c", "src/platform/ps4/log.c"]
     if bluetooth_probe:
         files = ["src/app/bluetooth_probe.c", "src/platform/ps4/bluetooth_probe.c", "src/platform/ps4/log.c"]
-        if target in ("bluetooth-cache-probe", "bluetooth-cache-rejections-probe"):
+        if target in ("bluetooth-cache-probe", "bluetooth-cache-rejections-probe", "bluetooth-link-state-probe"):
             files[1] = "src/platform/ps4/bluetooth_cache_probe.c"
         if bluetooth_pairing:
             files[1] = "src/platform/ps4/bluetooth_pairing_probe.c"
@@ -230,6 +236,9 @@ def payload(target, preserve_latest=False):
                  "src/platform/ps4/bluetooth_profile_window.c", "src/protocol/ds3_bluetooth.c", "src/protocol/ds3.c",
                  "src/app/bridge_session.c", "src/platform/ps4/virtual_pad.c", "src/output/ps4_mapping.c",
                  "src/output/vda_events.c", "vendor/control4free/klog_line.c", "src/platform/ps4/log.c"]
+    if unified:
+        files[0] = "src/app/unified_bridge.c"
+        files += ["src/platform/ps4/usb.c", "src/transport/auto.c"]
     objects = []
     flags = ["-target", "x86_64-scei-ps4", "--sysroot=" + str(sdk),
              "-isystem", str(sdk / "target/include"), "-Iinclude", "-Ivendor/control4free", "-std=gnu11",
@@ -242,6 +251,7 @@ def payload(target, preserve_latest=False):
     elif bluetooth_bridge: flags += ["-DDT_VDA_POWER_CONTROL"]
     if target in ("bluetooth-radio-privileged-probe", "bluetooth-radio-discovery-probe", "bluetooth-radio-incoming-probe", "bluetooth-radio-known-probe", "bluetooth-radio-profile-probe", "bluetooth-radio-link-probe", "bluetooth-radio-native-ignore-probe", "bluetooth-radio-reports-probe"): flags += ["-DDT_BT_EVENT_PRIVILEGES"]
     if target in ("bluetooth-cache-probe", "bluetooth-cache-rejections-probe"): flags += ["-DDT_BT_CACHE_PROBE"]
+    if target == "bluetooth-link-state-probe": flags += ["-DDT_BT_LINK_STATE_PROBE"]
     if target in ("bluetooth-radio-cache-probe", "bluetooth-radio-privileged-probe", "bluetooth-radio-discovery-probe", "bluetooth-radio-incoming-probe", "bluetooth-radio-known-probe", "bluetooth-radio-profile-probe", "bluetooth-radio-link-probe", "bluetooth-radio-native-ignore-probe", "bluetooth-radio-reports-probe"): flags += ["-DDT_BT_CACHE_ON_EVENT"]
     if target == "bluetooth-cache-rejections-probe": flags += ["-DDT_BT_CACHE_REJECTIONS"]
     if target in ("bluetooth-radio-discovery-probe", "bluetooth-radio-incoming-probe", "bluetooth-radio-known-probe", "bluetooth-radio-profile-probe", "bluetooth-radio-link-probe", "bluetooth-radio-native-ignore-probe", "bluetooth-radio-reports-probe"): flags += ["-DDT_BT_CACHE_AROUND_LISTEN"]
@@ -274,7 +284,7 @@ def payload(target, preserve_latest=False):
         obj = build / (name.replace("/", "_") + ".o")
         run([clang] + flags + ["-c", name, "-o", obj])
         objects.append(obj)
-    label = "bluetooth-bridge" if bluetooth_bridge else "bluetooth-probe" if bluetooth_probe else "usb-probe" if probe else "usb-bridge" if bridge else "usb-diag"
+    label = "unified-bridge" if unified else "bluetooth-bridge" if bluetooth_bridge else "bluetooth-probe" if bluetooth_probe else "usb-probe" if probe else "usb-bridge" if bridge else "usb-diag"
     output = ROOT / (f"outputs/controller-3-to-4-bridge-{version}.elf" if release
                      else f"outputs/dualshock-to-ps4-{label}-{version}.elf")
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -323,7 +333,7 @@ def payload(target, preserve_latest=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("target", choices=["test", "release", "payload", "bridge", "probe", "probe-wait", "probe64", "probe-f4", "bluetooth-bridge", "bluetooth-menu-probe", *BT_VERSIONS])
+    parser.add_argument("target", choices=["test", "release", "unified-bridge", "payload", "bridge", "probe", "probe-wait", "probe64", "probe-f4", "bluetooth-bridge", "bluetooth-menu-probe", *BT_VERSIONS])
     parser.add_argument("--preserve-latest", action="store_true",
                         help="Write only versioned build metadata; preserve the active run's metadata")
     args = parser.parse_args()

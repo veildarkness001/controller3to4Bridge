@@ -15,11 +15,11 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=["stage", "send", "fetch", "stop"])
-    parser.add_argument("--kind", choices=["bridge", "diagnostic", "probe", "bluetooth-probe", "bluetooth-bridge"], default="bridge")
+    parser.add_argument("--kind", choices=["bridge", "diagnostic", "probe", "bluetooth-probe", "bluetooth-bridge", "unified-bridge"], default="bridge")
     parser.add_argument("--host", required=True)
     parser.add_argument("--run", required=True, help="Local run identifier (directory below work/runs)")
     args = parser.parse_args()
-    if args.kind not in ("bridge", "bluetooth-bridge") and args.action == "stop":
+    if args.kind not in ("bridge", "bluetooth-bridge", "unified-bridge") and args.action == "stop":
         parser.error("This diagnostic has a bounded duration and no stop-file handler")
     if not args.run or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_." for c in args.run) or args.run in (".", ".."):
         raise SystemExit("Invalid run name")
@@ -28,12 +28,13 @@ def main():
     metadata_name, label, header = {
         "bridge": ("usb-bridge", "usb-bridge", "USB bridge "),
         "bluetooth-bridge": ("bluetooth-bridge", "bluetooth-bridge", "Bluetooth bridge "),
+        "unified-bridge": ("unified-bridge", "unified-bridge", "Unified bridge "),
         "diagnostic": ("usb-diagnostic", "usb-diag", "USB diagnostic "),
         "probe": ("usb-probe", "usb-probe", "USB probe "),
         "bluetooth-probe": ("bluetooth-probe", "bluetooth-probe", "Bluetooth probe "),
     }[args.kind]
     log_name = metadata_name + ".log"
-    final_marker = "bridge finished status=" if args.kind in ("bridge", "bluetooth-bridge") else "finished status="
+    final_marker = "bridge finished status=" if args.kind in ("bridge", "bluetooth-bridge", "unified-bridge") else "finished status="
     meta = json.loads((ROOT / "outputs" / (metadata_name + "-build.json")).read_text())
     name = f"dualshock-to-ps4-{label}-{meta['version']}.elf"
     data = (ROOT / "outputs" / name).read_bytes()

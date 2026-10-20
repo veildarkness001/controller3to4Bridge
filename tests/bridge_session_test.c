@@ -134,5 +134,15 @@ int main(void)
     DtBridgeConfig config = {.max_duration_us = 20000}; DtBridgeStats stats;
     assert(dt_bridge_run(&t, (DtVirtualPad *)1, &config, &stats) == 0);
     assert(stats.elapsed_us == 20000);
+    scenario = RECOVER; now = 1; end = 7000000; last_attempt = last_send = 0;
+    neutral_seen = attempts = 0;
+    config = (DtBridgeConfig){.should_stop = stop, .restart_on_input_loss = 1};
+    assert(dt_bridge_run(&t, (DtVirtualPad *)1, &config, &stats) == DT_BRIDGE_INPUT_LOST);
+    assert(stats.read_errors == 1 && stats.connections == 1 && neutral_seen == 1);
+    assert(now >= 1000000 && now < 1010000);
+    scenario = SILENT; now = 1; end = 7000000; last_attempt = last_send = 0;
+    attempts = 0;
+    assert(dt_bridge_run(&t, (DtVirtualPad *)1, &config, &stats) == DT_BRIDGE_INPUT_LOST);
+    assert(stats.stale == 1 && attempts == 1);
     puts("PASS bridge session: 8 simulated hours, >200 disconnects, absent/startup/backoff, stale/invalid neutralization, recovery, stop/logout/clock/output failures");
 }

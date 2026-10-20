@@ -30,7 +30,8 @@ int kernel_copyout(intptr_t address,void *out,size_t n) {
     assert((f==0x3c && n==2) || (f==8 && n==4));
     if(field==0x650+0x3c) {uint16_t psm=0x11;memcpy(out,&psm,2);}
     if(field==0x650+8) {uint32_t flags=0x98;memcpy(out,&flags,4);}
-   } else {assert(n==4 && (field==0x18 || field==0x12d0 || field==0x12e4 || field==0x12e8));}
+   } else if(field==0x48) {assert(n==2);uint16_t handle=1;memcpy(out,&handle,2);}
+   else {assert(n==4 && (field==0x18 || field==0x12d0 || field==0x12e4 || field==0x12e8));}
   }
  }
  else if((uint64_t)address>=context+0x4b6b8 && (uint64_t)address<context+0x4b7b8) {

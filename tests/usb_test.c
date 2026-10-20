@@ -15,6 +15,7 @@ static int scenario, exits, closes, releases, freed_lists, freed_configs, unload
 static int transfer_result, transfer_size, present = 1, kick_result, kicks;
 static uint64_t now;
 static int f4_result = 4, f4_calls;
+static int release_result, unload_result;
 #ifdef DT_USB_PROBE
 static int probe_controls, probe_fail;
 #endif
@@ -30,7 +31,7 @@ uint64_t dt_now_us(void) { return ++now; }
 void *dt_test_dlopen(const char *path, int flags)
 { (void)path; (void)flags; return scenario == LOAD_FAIL ? NULL : (void *)0x123; }
 char *dt_test_dlerror(void) { return "simulated load failure"; }
-int dt_test_dlclose(void *module) { assert(module == (void *)0x123); ++unloaded; return 0; }
+int dt_test_dlclose(void *module) { assert(module == (void *)0x123); ++unloaded; return unload_result; }
 intptr_t kernel_dynlib_dlsym(pid_t pid, uint32_t module, const char *symbol)
 { (void)pid; (void)module; (void)symbol; return 0; }
 static int32_t init(void) { return scenario == INIT_FAIL ? -1 : 0; }
@@ -48,7 +49,7 @@ static void close_device(DtUsbHandle *h) { assert(h == (DtUsbHandle *)0x222); ++
 static int32_t claim(DtUsbHandle *h, int32_t i)
 { (void)h; assert(i == 0); return scenario == CLAIM_FAIL ? -6 : 0; }
 static int32_t release(DtUsbHandle *h, int32_t i)
-{ (void)h; assert(i == 0); ++releases; return 0; }
+{ (void)h; assert(i == 0); ++releases; return release_result; }
 static int32_t control(DtUsbHandle *h, uint8_t type, uint8_t req, uint16_t value,
                        uint16_t index, unsigned char *data, uint16_t size, uint32_t timeout)
 {
@@ -136,6 +137,13 @@ int main(void)
         if (!expected_success) assert(ret != 0 && t.ops == NULL);
         else {
             assert(ret == 0 && t.kind == DT_TRANSPORT_USB && !t.ops->set_feedback);
+            int saved_f4 = f4_calls, saved_kicks = kicks, saved_closes = closes;
+            assert(dt_ps4_usb_present(&t) == 1);
+            present = 0; assert(dt_ps4_usb_present(&t) == 0);
+            present = -1; assert(dt_ps4_usb_present(&t) == -1);
+            present = 257; assert(dt_ps4_usb_present(&t) == -1);
+            present = 1;
+            assert(f4_calls == saved_f4 && kicks == saved_kicks && closes == saved_closes);
 #ifdef DT_USB_PROBE
             assert(kicks == 0);
             assert(probe_controls == 0); /* No extra control request during baseline. */
@@ -194,7 +202,7 @@ int main(void)
         int cycles = expected_success ? 100 : 0;
         assert(closes == (scenario >= CLAIM_FAIL) + cycles);
         assert(releases == (scenario >= F2_SHORT) + cycles);
-        assert(freed_lists == (scenario > INIT_FAIL) + cycles);
+        assert(freed_lists == (scenario > INIT_FAIL) + cycles + (expected_success ? 4 : 0));
         assert(freed_configs == (scenario > CONFIG_FAIL) + cycles);
         assert(unloaded == (scenario != LOAD_FAIL));
     }
@@ -234,5 +242,16 @@ int main(void)
     assert(dt_ps4_usb_create(&t) == 0);
     assert(t.ops->reconnect(t.context) == 1); /* IN-only fallback. */
     t.ops->close(t.context);
+    for (int failure = 0; failure < 3; ++failure) {
+        release_result = unload_result = 0;
+        assert(dt_ps4_usb_create(&t) == 0);
+        assert(t.ops->reconnect(t.context) == 1);
+        if (failure == 1) release_result = -1;
+        if (failure == 2) unload_result = -1;
+        assert(dt_ps4_usb_destroy(&t) == (failure ? 1 : 0));
+        assert(!t.ops && !t.context);
+    }
+    release_result = unload_result = 0;
+    assert(dt_ps4_usb_destroy(&t) < 0);
     puts("PASS USB lifecycle: load/symbol/init/config/endpoint/open/claim/feature failures, cleanup and reads");
 }

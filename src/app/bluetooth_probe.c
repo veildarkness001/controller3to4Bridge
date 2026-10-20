@@ -17,7 +17,16 @@ int main(void)
     if (flock(lock, LOCK_EX | LOCK_NB) != 0) { close(lock); return 1; }
     if (dt_log_open_named("bluetooth-probe.log") != 0) { close(lock); return 1; }
     dt_log("Bluetooth probe %s pid=%d firmware=0x%08x\n", DT_VERSION, getpid(), kernel_get_fw_version());
-#ifdef DT_BT_CACHE_PROBE
+#ifdef DT_BT_LINK_STATE_PROBE
+    dt_log("read-only known-DS3 link inspection; no registration or pairing writes\n");
+    uint64_t peer = 0;
+    int status = dt_ps4_bluetooth_known_peer(&peer);
+    if (!status) {
+        int present = dt_ps4_bluetooth_link_present(peer);
+        dt_log("BT own link present=%d inspection_ok=%d\n", present, present >= 0);
+        status = present < 0 ? 1 : dt_ps4_bluetooth_link_probe(peer);
+    }
+#elif defined(DT_BT_CACHE_PROBE)
     dt_log("manual read-only known-DS3 cache metadata; no registration or pairing writes\n");
     int status = dt_ps4_bluetooth_cache_probe();
 #elif defined(DT_BT_PAIRING_RESTORE)

@@ -76,8 +76,9 @@ static int load_api(DtUsb *u)
     return 0;
 }
 
-static void disconnect_device(DtUsb *u)
+static int disconnect_device(DtUsb *u)
 {
+    int status = 0;
 #ifdef DT_USB_PROBE
     if (u->reads)
         dt_log("probe timing reads=%llu total_us=%llu min_us=%llu max_us=%llu\n",
@@ -90,26 +91,36 @@ static void disconnect_device(DtUsb *u)
                (unsigned long long)u->timeouts, (unsigned long long)u->reports,
                (unsigned long long)u->bytes, (unsigned long long)u->errors,
                (uint32_t)u->last_result, u->last_size);
-    if (u->claimed) dt_log("release interface: %d\n", u->api.release(u->handle, u->interface));
+    if (u->claimed) {
+        int result = u->api.release(u->handle, u->interface);
+        dt_log("release interface: %d\n", result);
+        if (result != 0) status = 1;
+    }
     if (u->handle) u->api.close(u->handle);
     u->claimed = 0; u->handle = NULL;
     u->reads = u->empty = u->timeouts = u->reports = u->errors = u->bytes = 0;
     u->last_result = u->last_size = 0;
     u->read_us = u->min_us = u->max_us = u->next_read_log = 0;
+    return status;
 }
 
-static void close_transport(void *context)
+static int cleanup(DtUsb *u)
 {
-    DtUsb *u = context;
-    if (!u) return;
-    disconnect_device(u);
+    if (!u) return -1;
+    int status = disconnect_device(u);
     if (u->initialized) { u->api.exit(); dt_log("sceUsbdExit called (void)\n"); }
     /* The pinned SDK implements dlclose with SYS_dynlib_unload. Pair our own
      * load only; a successful return does not prove that shared USB state was
      * restored. Do not infer POSIX loader/refcount semantics from this name. */
-    if (u->module) dt_log("close library reference: %d\n", dlclose(u->module));
+    if (u->module) {
+        int result = dlclose(u->module);
+        dt_log("close library reference: %d\n", result);
+        if (result != 0) status = 1;
+    }
     free(u);
+    return status;
 }
+static void close_transport(void *context) { (void)cleanup(context); }
 
 static int find_endpoint(DtUsb *u, const DtUsbConfig *config)
 {
@@ -315,6 +326,34 @@ static int reconnect(void *context)
 }
 
 static const DtTransportOps ops = { read_report, NULL, close_transport, reconnect };
+
+int dt_ps4_usb_destroy(DtTransport *t)
+{
+    if (!t || t->ops != &ops || !t->context) return -1;
+    int status = cleanup(t->context);
+    *t = (DtTransport){0};
+    return status;
+}
+
+int dt_ps4_usb_present(DtTransport *t)
+{
+    if (!t || t->ops != &ops || !t->context) return -1;
+    DtUsb *u = t->context;
+    DtUsbDevice **list = NULL;
+    int64_t count = u->api.list(&list);
+    int result = 0;
+    if (count < 0 || count > 256 || !list) {
+        if (list) u->api.free_list(list, 1);
+        return count < 0 || count > 256 ? -1 : 0;
+    }
+    for (int64_t i = 0; i < count && !result; ++i) {
+        DtUsbDescriptor desc;
+        if (u->api.descriptor(list[i], &desc) == 0 &&
+            desc.vendor == 0x054c && desc.product == 0x0268) result = 1;
+    }
+    u->api.free_list(list, 1);
+    return result;
+}
 
 int dt_ps4_usb_create(DtTransport *out)
 {

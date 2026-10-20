@@ -15,7 +15,8 @@ typedef struct {
     uint64_t timestamp_us;
 } DtControllerState;
 
-typedef enum { DT_TRANSPORT_USB = 1, DT_TRANSPORT_BLUETOOTH = 2 } DtTransportKind;
+typedef enum { DT_TRANSPORT_USB = 1, DT_TRANSPORT_BLUETOOTH = 2,
+               DT_TRANSPORT_AUTO = 3 } DtTransportKind;
 typedef struct {
     uint8_t data[128]; /* HID report ID first; backend removes transport framing. */
     size_t size;

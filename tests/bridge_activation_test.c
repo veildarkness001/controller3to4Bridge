@@ -62,5 +62,12 @@ int main(void)
     config = (DtBridgeConfig){.max_duration_us = 10000};
     assert(dt_bridge_wait_for_input(&t, &config) == 0 && now == 10100);
     assert(dt_bridge_wait_for_input(NULL, &config) == -1);
+    for (int loss = 0; loss < 2; ++loss) {
+        scenario = loss ? STALE_INPUT : READ_LOSS;
+        now = 100; attempts = reads = stop_requested = 0; last_attempt = 0;
+        config = (DtBridgeConfig){.should_stop = stop, .restart_on_input_loss = 1};
+        assert(dt_bridge_wait_for_input(&t, &config) == DT_BRIDGE_INPUT_LOST);
+        assert(attempts == 1);
+    }
     puts("PASS deferred activation: absent/invalid input, released PS, stop during read, loss/retry, stale input, clocks and timeout; no VDA calls");
 }

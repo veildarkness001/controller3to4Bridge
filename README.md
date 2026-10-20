@@ -1,173 +1,85 @@
 # Controller3To4Bridge
 
-Use a Sony DualShock 3 directly on a PS4 running GoldHEN.
+## What is it?
 
-Controller3To4Bridge is an experimental on-console bridge that reads the DS3 over USB or internal Bluetooth and presents it to the PS4 as a virtual DualShock 4. Once running, it needs no computer, phone, or network connection during gameplay. It also maps DS3 controls to basic touchpad gestures for games and system menus that need them.
+Controller3To4Bridge lets you use a Sony DualShock 3 on a PS4 running GoldHEN, with standard controls and basic touchpad emulation. It runs on the console, so you can play without a computer, phone, or network connection.
 
-This is an independent project, not affiliated with, endorsed by, or sponsored by Sony Interactive Entertainment. DUALSHOCK, PlayStation, and PS4 are trademarks or registered trademarks of Sony Interactive Entertainment Inc. Product names are used to identify compatibility.
+**One ELF supports both USB and internal Bluetooth** in version 1.2.3. Connect the DS3 with a mini-USB data cable for wired play, or disconnect the cable and press **PS** for Bluetooth. USB takes priority when a cable is connected. The bridge clears held inputs and starts a fresh controller session when changing transport. Choose your user again if prompted; the ELF stays running.
 
-**The DS3 works wirelessly through the PS4's internal Bluetooth, including in-game control and DS4 touchpad emulation. USB input is also supported and tested.** Bluetooth support remains experimental and specific to the tested firmware.
+The 1.2.3 ELF was tested with **PS4 firmware 13.52, GoldHEN v2.4b18.12, and an original Sony DS3**: USB → Bluetooth → USB → Bluetooth, user selection and game menus after each change, brief wireless gameplay, and clean shutdown. Longer sessions, rest mode, other firmware versions, and third-party controllers remain unverified.
 
-## Status and compatibility
-
-| Feature | Status |
-| --- | --- |
-| USB controller input and PS button | Tested on console |
-| USB connection after startup and reconnection | Tested with bridge 0.3.3 |
-| Touchpad movement, click, and Share mapping | Tested with bridge 0.4.0 in the PS4 system keyboard and menus |
-| Internal Bluetooth | User assignment, menu navigation, and PS verified with 0.12.0; In-game control and touchpad emulation confirmed with 0.12.1 on firmware 13.52 |
-| Bluetooth touchpad emulation | Confirmed in games with 0.12.1; individual gestures, click, and Share have not each been checked separately over Bluetooth |
-| Bluetooth reconnection and long sessions | Physical reconnection and 30–60 minute gameplay tests pending |
-| Rumble and other controller feedback | Not implemented |
-
-The tested setup is **PS4 firmware 13.52, GoldHEN v2.4b18.12, and an original Sony DS3**. USB operation uses a mini-USB data cable. Bluetooth gameplay runs with the cable disconnected and requires the DS3 to be paired to the console beforehand. Compatibility with other firmware versions or third-party controllers has not been established.
-
-A confirmed 30–60 minute gameplay session and a hardware test of input loss while holding Select are still pending. Simulated tests do not establish long-term hardware stability.
-
-The DS3 has no physical touchpad, speaker, headset jack, or light bar. Touchpad emulation provides one contact with fixed sensitivity; full DS4 feature parity is outside the current implementation.
+Bluetooth requires a DS3 already paired to the PS4; initial pairing is not included. USB does not require Bluetooth pairing. Rumble is not implemented.
 
 ## Controls
 
-| DS3 input | PS4 output |
+| DualShock 3 | PS4 action |
 | --- | --- |
-| Face buttons, D-pad, sticks, shoulder buttons, and triggers | Corresponding controls |
+| Face buttons, D-pad, sticks, shoulder buttons, and triggers | Same controls |
 | PS | PS |
 | Start | Options |
-| Hold Select | Touch contact starting at the center of the touchpad |
-| Select + right stick | Move the touch contact |
-| Select + R3 | Touchpad click |
+| Hold Select | Touch the center of the touchpad |
+| Select + right stick | Move across the touchpad |
+| Select + R3 | Click the touchpad |
 | Press and release Select without moving or clicking | Share |
 
-While Select is held, the right stick controls the emulated touchpad. Input loss cancels the touch contact; Select must be released before touchpad input can resume.
+Release Select to use the right stick normally again. Touchpad emulation supports one contact.
 
-## Build and test
+**Choose USB or Bluetooth before opening a game.** Changing transport recreates the virtual controller; some applications may lose input until reopened. Switching worked in the tested game, but compatibility with other games is not established.
 
-The build bootstrap currently supports **Apple Silicon macOS** and requires Python 3, Git, `make`, and Apple clang. It downloads pinned SDK and Zig versions into `work/`, verifies their hashes, and does not install tools globally.
+## Install with GoldHEN and enable AutoRun
 
-```sh
-python3 tools/bootstrap_toolchain.py
-python3 tools/build.py test
-python3 tools/build.py bridge
-python3 tools/build.py bluetooth-bridge
-python3 tools/build.py release
-```
+1. Use `controller-3-to-4-bridge-1.2.3.elf`, available locally in `outputs/`. The same file works for both connection types. Published downloads are listed in [Releases](https://github.com/veildarkness001/controller3to4Bridge/releases).
+2. Enable GoldHEN's FTP server. From an FTP client on a computer on the same network, connect to the PS4's IP address on port **2121** and copy the ELF to **`/data/payloads/`**.
+3. On the PS4, open **GoldHEN → Utilities → PayLoader LaunchPad**, select the ELF, and press **X** to start it once.
+4. Connect the DS3 with a mini-USB data cable, or press **PS** on an already paired wireless DS3. Choose a user when prompted. If you also use a DS4, assign it to a different user.
+5. To enable automatic startup, highlight the ELF in LaunchPad and press **Square** to add it to **AutoRun**. On subsequent restarts, the bridge starts when you activate GoldHEN. Connect by USB or press **PS** for Bluetooth.
 
-`bridge` builds the USB bridge; `bluetooth-bridge` builds the native Bluetooth bridge. Build the transport you intend to use.
+**Run one bridge instance at a time.** After adding it to AutoRun, do not also launch it manually. When upgrading, disable the old entry in **GoldHEN → Utilities → AutoRun Queue** before adding the new ELF. Square in LaunchPad adds an entry; it does not disable the previous version.
 
-The current Bluetooth development candidate is **0.12.5**. It adds handling for
-the virtual controller's native **Sound/Devices → Turn Off Device** request,
-then disconnects the DS3 and waits for a new activation. One complete manual
-console cycle confirmed LED shutdown, Bluetooth disconnection, and PS reactivation
-with user assignment and working input, without reloading the payload.
-It retains the kernel-log reader to observe requests for its own device.
-Steady LED 1 was previously confirmed in 0.12.3; it indicates the bridge connection,
-not the PS4 user slot. Use `python3 tools/build.py bluetooth-bridge --preserve-latest` to
-build a candidate without replacing the metadata used to manage an active run.
+For Bluetooth, hold **PS** and open **Sound/Devices → Turn Off Device** to turn off the DS3. It appears as **DUALSHOCK 4**; pressing **PS** activates it again. With USB connected, this action disables virtual input until you unplug the cable. A physical DS4 can have the same menu name, so the name alone does not distinguish them. One Bluetooth menu power-off and PS reactivation cycle was confirmed on PS4 with 1.2.2. Wired menu power-off and coexistence with an active physical DS4 remain untested.
 
-`release` builds the Bluetooth release ELF as `outputs/controller-3-to-4-bridge-1.1.0.elf`, using the version in `VERSION`, with a SHA256 checksum alongside it. It preserves the development build metadata used by the console tools. Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).
-
-ELF payloads and build metadata are written to `outputs/`. Dependencies, temporary files, and logs are kept in `work/`. Both directories are excluded from Git. Building does not send or run a payload on the console.
-
-Local tests cover the DS3 protocol, control mapping, sessions, transports, and diagnostics. C tests use AddressSanitizer and UndefinedBehaviorSanitizer; Python tests cover the console tooling.
-
-## Install the Bluetooth ELF with GoldHEN
-
-Bluetooth bridge **0.12.2** was tested with GoldHEN v2.4b18.12 on firmware 13.52 using manual payload loading and AutoRun after a console restart. Version 0.12.1 was also tested through PayLoader LaunchPad. The DS3 must already be paired to this PS4; the bridge does not perform initial pairing.
-
-Release **1.1.0** packages the Bluetooth bridge code from 0.12.5, including the steady LED indicator and native menu power-off with PS reactivation. Its ELF is `controller-3-to-4-bridge-1.1.0.elf`; use this filename in the steps below when installing the release download. The development builds were checked in manual console tests; the packaged release ELF has not been run separately on a console.
-
-1. Copy `controller-3-to-4-bridge-1.1.0.elf` to `/data/payloads/` on the PS4, for example using GoldHEN FTP. No additional runtime configuration files are required; the bridge creates its log directory itself.
-2. Open **GoldHEN → Utilities → PayLoader LaunchPad**, select this ELF, and press **X** once to test it. Run only one bridge instance at a time.
-3. With the DS3 off, the bridge waits in the background without opening user selection. Press **PS** on the wireless DS3: once valid input arrives, the bridge creates the virtual controller and displays user selection. Press **X** to choose a user.
-4. To keep a DS4 and the bridged DS3 working together, assign them to different users. Both worked in this configuration during testing. Assigning the DS3 to the DS4's user was followed by the DS4 losing control; the exact cause has not been established.
-5. Once manual loading works, highlight the same ELF in LaunchPad and press **Square** to add it to AutoRun. On the next restart, activate GoldHEN normally: it starts the bridge automatically. Do not also launch the ELF manually.
-
-AutoRun starts the bridge when GoldHEN is activated; it does not enable GoldHEN or power on the console. When upgrading, disable the previous bridge entry under **GoldHEN → Utilities → AutoRun Queue**, then add the new version from LaunchPad. **Square adds to the queue; it does not disable an existing entry.** Enable only one bridge version. Rest-mode behavior and repeated restart cycles remain untested.
-
-Both a manual console test and an AutoRun test after restart confirmed the deferred user selection in **0.12.2**: no selector with the DS3 off, selection after PS, and working controller input afterward. After activation, the existing virtual-controller recovery behavior is retained; this change does not remove and recreate the virtual controller on every physical disconnection.
-
-### Why does the DS3 appear as DUALSHOCK 4?
-
-On the tested firmware 13.52, **Settings → Devices → Bluetooth Devices** can show the physical controller as **PLAYSTATION(R)3 Controller**, while holding **PS → Sound/Devices → Turn Off Device** shows the bridge's virtual controller as **DUALSHOCK 4**. This is expected: the two screens obtain their names differently, and the bridge presents the DS3 as a virtual DS4.
-
-Static analysis of firmware 13.52 found that the quick menu falls back to a generic controller label because its device-information path skips custom names for controller types. The virtual-controller creation API used by this bridge has no name parameter. Changing the physical Bluetooth name would therefore not change this label through the current path. The bridge does not modify ShellUI to override it.
-
-In release **1.1.0**, selecting the virtual controller's **DUALSHOCK 4** entry turns off the bridged DS3; pressing **PS** on the DS3 activates it again. One complete cycle was confirmed with development build 0.12.5. If a physical DS4 is also connected, the name alone does not distinguish the two controllers; the power-off cycle with an active physical DS4 remains untested.
+See [CHANGELOG.md](CHANGELOG.md) for release changes.
 
 ## Run manually from a computer
 
-Both bridges require a PS4 running GoldHEN with its payload loader enabled. The host tools use FTP on port **2121** and the payload loader on port **9090** to upload, start, and inspect a run. Replace `PS4_IP` with your console's address and choose a new run name for each execution. Run one bridge instance at a time, using either USB or Bluetooth.
+You need **Python 3**, the ELF, and a computer on the same network as the PS4.
 
-### USB
-
-```sh
-python3 tools/console.py stage --kind bridge --host PS4_IP --run usb-test-001
-python3 tools/console.py send --kind bridge --host PS4_IP --run usb-test-001
-python3 tools/console.py fetch --kind bridge --host PS4_IP --run usb-test-001
-```
-
-`stage` verifies the uploaded file using SHA256. `send` sends the payload once. Connect the DS3 with a mini-USB data cable and complete the PS4 user assignment if prompted.
-
-To stop the bridge and retrieve its final log:
+1. Activate GoldHEN and enable its **BinLoader/PayLoader server** on port **9090**. Disable the bridge's AutoRun entry and make sure no bridge instance is running; disabling AutoRun does not stop an instance already loaded.
+2. Open a terminal in the folder containing the ELF. Replace `PS4_IP` below with the console's IP address and run the command once:
 
 ```sh
-python3 tools/console.py stop --kind bridge --host PS4_IP --run usb-test-001
-python3 tools/console.py fetch --kind bridge --host PS4_IP --run usb-test-001
+python3 -c "import socket; from pathlib import Path; data = Path('controller-3-to-4-bridge-1.2.3.elf').read_bytes(); s = socket.create_connection(('PS4_IP', 9090), timeout=8); s.sendall(data); s.shutdown(socket.SHUT_WR); s.close()"
 ```
 
-Confirm that the log reports bridge completion, virtual controller removal, and privilege restoration before starting another instance. Keep AutoRun disabled during prototype testing.
+Use `python` instead of `python3` if that is your Python 3 command.
 
-### Internal Bluetooth
+3. Connect the DS3 by USB, or press **PS** for Bluetooth, and choose a user. Once connected, the computer is no longer needed.
 
-Build the Bluetooth bridge and use a DS3 already paired to the console. The bridge does not perform initial pairing. With the USB bridge stopped and the DS3 disconnected from USB, start a new Bluetooth run:
-
-```sh
-python3 tools/console.py stage --kind bluetooth-bridge --host PS4_IP --run bt-test-001
-python3 tools/console.py send --kind bluetooth-bridge --host PS4_IP --run bt-test-001
-python3 tools/console.py fetch --kind bluetooth-bridge --host PS4_IP --run bt-test-001
-```
-
-Once the bridge is ready, press PS on the DS3 to connect and complete user assignment if prompted. Version 0.12.1 runs until manual stop, user logout, or a fatal stream/platform error; it has no fixed session time limit. To stop it and inspect cleanup:
-
-```sh
-python3 tools/console.py stop --kind bluetooth-bridge --host PS4_IP --run bt-test-001
-python3 tools/console.py fetch --kind bluetooth-bridge --host PS4_IP --run bt-test-001
-```
-
-Confirm bridge completion, virtual controller removal, Bluetooth disconnection, and restoration before starting another instance. Keep AutoRun disabled when testing manual payload loading from a computer.
-
-### Bluetooth hardware results and remaining work
-
-- **0.12.0:** user assignment, D-pad navigation, and PS quick menu verified. The test completed its programmed 180 seconds with 8,235 valid input reports, no invalid reports or read errors, and clean device removal and restoration.
-- **0.12.1:** in-game control and touchpad emulation confirmed with the USB cable disconnected. The session later completed 108 minutes and 17 seconds with 571,837 valid input reports, no invalid reports, read errors, or stale-input events, and clean shutdown/restoration. This duration records bridge uptime, not confirmed continuous gameplay. The game title and individual touch gestures were not recorded.
-- **LaunchPad and AutoRun, 0.12.1:** manual loading from `/data/payloads/` and automatic loading when GoldHEN was activated after a restart both worked. DS3 and DS4 control together was confirmed with different users. At three minutes after AutoRun startup, the log showed 14,514 valid reports, zero invalid reports or read errors, and no stale-input events.
-- **Deferred activation, 0.12.2:** manual loading and AutoRun after restart both waited without user selection while the DS3 was off; PS triggered selection and controller input worked afterward. The manual test closed cleanly after 314 seconds of active bridging with 27,794 valid reports, no invalid reports, read errors, or stale-input events, and verified restoration.
-- **LED indicator, development candidate 0.12.3:** steady LED 1 and continued controller operation confirmed after PS and user selection in a first manual console test. At 120 seconds, the log showed 10,561 valid reports, no invalid reports or read errors, and no stale-input events. LED 1 indicates the bridge connection; it does not track the PS4 user slot. This change is not included in release 1.0.0.
-- **Native menu power-off, development candidate 0.12.5:** one complete cycle verified through Sound/Devices → Turn Off Device, where the virtual controller appears as DUALSHOCK 4. The DS3 LED turned off and input stopped; logs confirmed own-device deletion, Bluetooth disconnection and link absence, restoration, and return to activation wait. Pressing PS again restored user selection and working input with a new virtual device, without reloading the payload or restarting the console. Repeated cycles and interaction with an active physical DS4 remain untested. This change is not included in release 1.0.0 or the previously installed AutoRun version.
-- **Pending:** 30–60 minute confirmed gameplay sessions, recovery after unexpected Bluetooth loss, repeated menu power-off and startup/restart cycles, rest-mode behavior, player-slot LED mapping, rumble, and broader coexistence with other Bluetooth devices. Release 1.0.0 can keep flashing while control works. Powering on the console with the DS3 has not been validated.
-
-The Bluetooth bridge temporarily modifies firmware 13.52 HID admission, the native DS3 rejection, and report capacity. Its current profile changes can affect other supported Bluetooth devices, so coexistence still needs further development and hardware testing. These short sessions do not establish long-term stability.
-
-Bluetooth diagnostics are separate experimental payloads. Some change controller pairing or temporarily modify firmware-specific behavior; review their implementation and procedure before running them.
+This loads the ELF for the current session; it does not add it to AutoRun. If the command fails or the DS3 does not connect, check the running bridge before sending it again.
 
 ## Project structure
 
-- `include/dt/`: transport, controller state, session, and virtual output interfaces.
-- `src/protocol/`: DS3 report decoding and Bluetooth framing.
-- `src/transport/`: Bluetooth transport, independent of the platform link adapter.
-- `src/platform/ps4/`: USB, native Bluetooth, virtual controller support, and diagnostics.
-- `src/output/`: PS4 control mapping and virtual device events.
-- `src/app/`: bridge, session management, and diagnostic entry points.
-- `tests/`: local tests using simulated devices and services.
-- `tools/`: builds, manual console operations, and ELF inspection.
-- `vendor/`: attributed Control4Free source files and their license.
+```text
+include/dt/        Shared interfaces and controller state
+src/
+  app/             USB and Bluetooth bridges and session management
+  protocol/        DS3 input decoding
+  transport/       Automatic USB/Bluetooth selection and Bluetooth transport
+  platform/ps4/    PS4 USB, Bluetooth, and virtual controller support
+  output/          PS4 control mapping and touchpad emulation
+tests/             Local tests
+tools/             Build, test, and manual console tools
+vendor/            Third-party source and licenses
+work/              Local dependencies, temporary files, and logs (ignored by Git)
+outputs/           Built ELF files and checksums (ignored by Git)
+```
 
 ## Acknowledgements
 
 This project builds on work shared by the PS4 homebrew and controller development communities. Thank you to the following authors and contributors:
 
 - **[SiSTR0](https://github.com/SiSTR0)**, creator of **[GoldHEN](https://github.com/GoldHEN/GoldHEN)**, for the homebrew environment and services used to run and test this bridge.
-- **[MoHadiShibli](https://github.com/MoHadiShibli)**, author of **[Control4Free](https://github.com/MoHadiShibli/Control4Free)**. This project includes three source/header files from Control4Free 1.2.1 and adapts its virtual controller initialization, lifecycle, and event handling for local DS3 input.
+- **[MoHadiShibli](https://github.com/MoHadiShibli)**, author of **[Control4Free](https://github.com/MoHadiShibli/Control4Free)**. This project includes three source/header files from Control4Free 1.2.2 and adapts its virtual controller initialization, lifecycle, and event handling for local DS3 input.
 - **[seregonwar](https://github.com/seregonwar)**, author of **[SplashDown](https://github.com/seregonwar/SplashDown)**, whose virtual controller work underlies the implementation credited by Control4Free.
 - **John Törnblom and the [ps4-payload-sdk contributors](https://github.com/ps4-payload-dev/sdk)**, for the SDK, startup code, and runtime used to build the payloads; and the **[libusb authors](https://github.com/libusb/libusb)**, whose descriptor declarations informed the reduced USB ABI declarations.
 - **The [OpenOrbis](https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain) and [shadPS4](https://github.com/shadps4-emu/shadPS4) contributors**, for references used to check PS4 USB interfaces, cleanup signatures, and timeout behavior.
@@ -181,4 +93,6 @@ The protocol and API references above informed this project's implementation. In
 
 ## License
 
-GPL-3.0. See [LICENSE](LICENSE) and [THIRD_PARTY.md](THIRD_PARTY.md) for third-party notices and licensing details.
+GPL-3.0. See [LICENSE](LICENSE) and [THIRD_PARTY.md](THIRD_PARTY.md) for licensing details and third-party notices.
+
+This independent project is not affiliated with or endorsed by Sony Interactive Entertainment. DUALSHOCK, PlayStation, and PS4 are trademarks or registered trademarks of Sony Interactive Entertainment Inc.
