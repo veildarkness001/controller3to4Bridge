@@ -10,6 +10,8 @@ int dt_ps4_usb_create(DtTransport *out);
 int dt_ps4_usb_present(DtTransport *transport);
 /* Checked final cleanup; clears the transport and reports release/unload failure. */
 int dt_ps4_usb_destroy(DtTransport *transport);
+/* A failed configuration restoration is fatal until this backend is closed. */
+int dt_ps4_usb_status(const DtTransport *transport);
 /* Pairing experiment only: exact F2/F5 reads and bounded F5 host write. */
 int dt_ps4_usb_pairing_read(DtTransport *transport, uint8_t identity[6], uint8_t host[6]);
 int dt_ps4_usb_pairing_write(DtTransport *transport, const uint8_t host[6]);

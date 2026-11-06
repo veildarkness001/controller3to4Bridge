@@ -34,6 +34,23 @@ static int input(int usb, DtInputReport *r, unsigned timeout)
     r->data[6] = r->data[7] = r->data[8] = r->data[9] = 128;
     /* A held Select crossing a source boundary must not synthesize Share/click. */
     if (mode == SWITCH && now >= 900000) { r->data[2] = 1; r->data[8] = 255; }
+#ifdef DT_TEST_DUALSENSE_USB
+    if (usb && mode != SWITCH) {
+        memset(r, 0, sizeof(*r));
+        r->format = DT_REPORT_DUALSENSE_USB; r->size = 64; r->data[0] = 1;
+        r->data[1] = r->data[2] = r->data[3] = r->data[4] = 128;
+        r->data[8] = 0x28; /* Cross, centered hat. */
+        r->data[33] = r->data[37] = 0x80; /* No contacts. */
+    }
+#endif
+#ifdef DT_TEST_DUALSENSE_BASIC_BT
+    if (!usb && mode != SWITCH) {
+        memset(r, 0, sizeof(*r));
+        r->format = DT_REPORT_DUALSENSE_BT; r->size = 10; r->data[0] = 1;
+        r->data[1] = r->data[2] = r->data[3] = r->data[4] = 128;
+        r->data[5] = 0x48; /* Circle, centered hat in basic BT format. */
+    }
+#endif
     r->timestamp_us = now;
     return 1;
 }
@@ -91,5 +108,15 @@ int main(void)
     assert(dt_auto_transport_init(&t, &s, NULL, NULL, NULL, NULL) < 0);
     assert(dt_auto_transport_init(&t, &s, &bt, &usb, NULL, NULL) < 0);
     assert(dt_auto_transport_init(&t, &s, &usb, &bt, usb_present, NULL) < 0);
+    mode=USB_ONLY;bt_live=0;now=1;usb_attempts=0;
+    assert(dt_auto_transport_init(&t,&s,&usb,NULL,usb_present,NULL)==0);
+    assert(t.ops->reconnect(t.context)==1 && usb_attempts==1);
+    s.reuse_active=1;
+    assert(t.ops->reconnect(t.context)==1 && usb_attempts==1 && !s.reuse_active);
+    assert(t.ops->reconnect(t.context)==1 && usb_attempts==2);
+    /* A failed read invalidates even a requested handoff: recover afresh. */
+    s.reuse_active=1;mode=ABSENT;DtInputReport lost={0};
+    assert(t.ops->read_report(t.context,&lost,4)<0 && !s.active);
+    assert(t.ops->reconnect(t.context)==0 && !s.reuse_active);
     puts("PASS automatic transport: USB priority, USB/BT/USB with same VDA, neutral loss and held Select, absent/silent input, single backend and probe error");
 }

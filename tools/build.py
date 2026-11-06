@@ -23,8 +23,24 @@ def tests():
     build = ROOT / "work/tests"
     build.mkdir(parents=True, exist_ok=True)
     common = ["clang", "-std=gnu11", "-Wall", "-Wextra", "-Werror",
-              "-fsanitize=address,undefined", "-Iinclude", "-Ivendor/control4free"]
+              "-fsanitize=address,undefined", "-fno-sanitize-recover=all", "-Iinclude", "-Ivendor/control4free"]
     for name, sources, flags in [
+        ("bluetooth-controller-selection", ["src/platform/ps4/controller_bluetooth.c", "tests/controller_bluetooth_test.c"], []),
+        ("bluetooth-controller-profile", ["src/app/controller_profile.c", "tests/controller_profile_test.c"], ['-DDT_BT_PROFILE_PATH="work/tests/controller-profile-test"']),
+        ("ps4-dualsense-bluetooth-enhanced-request", ["tests/ps4_dualsense_bluetooth_test.c", "src/protocol/dualsense.c"], ["-Itests/include", "-DDT_DUALSENSE_BT_ENHANCED_REQUEST"]),
+        ("ps4-dualsense-bluetooth-passive", ["tests/ps4_dualsense_bluetooth_test.c", "src/protocol/dualsense.c"], ["-Itests/include", "-DDT_DUALSENSE_BT_PASSIVE"]),
+        ("ps4-dualsense-bluetooth", ["tests/ps4_dualsense_bluetooth_test.c", "src/protocol/dualsense.c"], ["-Itests/include"]),
+        ("dualsense-bt-window", ["tests/dualsense_bluetooth_window_test.c"], ["-Itests/include"]),
+        ("dualsense", ["src/protocol/dualsense.c", "src/protocol/ds3.c",
+         "src/protocol/controller.c", "src/output/ps4_mapping.c", "tests/dualsense_test.c"], []),
+        ("dualsense-bluetooth", ["src/protocol/dualsense.c", "src/transport/dualsense_bluetooth.c",
+         "tests/dualsense_bluetooth_test.c"], []),
+        ("dualsense-basic-bt-session", ["src/transport/auto.c", "src/app/bridge_session.c", "src/protocol/ds3.c",
+         "src/output/ps4_mapping.c", "tests/auto_transport_test.c"],
+         ["-Dusleep=dt_test_usleep", "-DDT_TEST_DUALSENSE_BASIC_BT"]),
+        ("dualsense-auto-transport", ["src/transport/auto.c", "src/app/bridge_session.c", "src/protocol/ds3.c",
+         "src/output/ps4_mapping.c", "tests/auto_transport_test.c"],
+         ["-Dusleep=dt_test_usleep", "-DDT_TEST_DUALSENSE_USB"]),
         ("bluetooth-link-state", ["tests/bluetooth_link_state_test.c"], ["-Itests/include"]),
         ("auto-transport", ["src/transport/auto.c", "src/app/bridge_session.c", "src/protocol/ds3.c",
          "src/output/ps4_mapping.c", "tests/auto_transport_test.c"], ["-Dusleep=dt_test_usleep"]),
@@ -78,12 +94,19 @@ def tests():
         ("bluetooth-probe", ["src/platform/ps4/bluetooth_probe.c", "tests/bluetooth_probe_test.c"],
          ["-Itests/include", "-DDT_BT_SOCKET_FAMILY=36", "-Dsocket=dt_test_socket", "-Dclose=dt_test_close",
           "-Dstat=dt_test_stat"]),
+        ("log-sync", ["src/platform/ps4/log.c", "tests/log_test.c"], ["-Itests/include",
+         '-DDT_LOG_DIRECTORY="work/tests/logs"', "-DDT_LOG_SYNC", "-DDT_TEST_LOG_SYNC", "-Dfsync=dt_test_fsync"]),
         ("log", ["src/platform/ps4/log.c", "tests/log_test.c"], ["-Itests/include",
          '-DDT_LOG_DIRECTORY="work/tests/logs"']),
         ("bridge-session", ["src/app/bridge_session.c", "src/protocol/ds3.c",
          "src/output/ps4_mapping.c", "tests/bridge_session_test.c"], ["-Dusleep=dt_test_usleep"]),
         ("ds3", ["src/protocol/ds3.c", "tests/ds3_test.c"], []),
+        ("dualsense-usb-window", ["src/platform/ps4/dualsense_usb_window.c", "tests/dualsense_usb_window_test.c"], []),
+        ("ps4-dualsense-usb", ["tests/ps4_dualsense_usb_test.c", "src/platform/ps4/dualsense_usb_window.c"], ["-Itests/include"]),
         ("usb", ["src/platform/ps4/usb.c", "tests/usb_test.c"], ["-Itests/include",
+         "-Ddlopen=dt_test_dlopen", "-Ddlsym=dt_test_dlsym", "-Ddlerror=dt_test_dlerror",
+         "-Ddlclose=dt_test_dlclose"]),
+        ("usb-ds3-only", ["src/platform/ps4/usb.c", "tests/usb_test.c"], ["-Itests/include", "-DDT_USB_DS3_ONLY",
          "-Ddlopen=dt_test_dlopen", "-Ddlsym=dt_test_dlsym", "-Ddlerror=dt_test_dlerror",
          "-Ddlclose=dt_test_dlclose"]),
         ("usb-probe", ["src/platform/ps4/usb.c", "tests/usb_test.c"], ["-Itests/include", "-DDT_USB_PROBE",
@@ -107,6 +130,8 @@ def tests():
          ["-Itests/include", "-DDT_VDA_POWER_CONTROL", "-Dopen=dt_test_open", "-Dread=dt_test_read", "-Dclose=dt_test_close",
           "-Dusleep=dt_test_usleep", "-Ddlopen=dt_test_dlopen", "-Ddlerror=dt_test_dlerror"]),
     ]:
+        if "src/app/bridge_session.c" in sources:
+            sources += ["src/protocol/controller.c", "src/protocol/dualsense.c"]
         binary = build / (name + "-test")
         run(common + flags + sources + ["-o", binary])
         run([binary])
@@ -238,13 +263,20 @@ def payload(target, preserve_latest=False):
                  "src/output/vda_events.c", "vendor/control4free/klog_line.c", "src/platform/ps4/log.c"]
     if unified:
         files[0] = "src/app/unified_bridge.c"
-        files += ["src/platform/ps4/usb.c", "src/transport/auto.c"]
+        files += ["src/platform/ps4/usb.c", "src/transport/auto.c", "src/app/controller_profile.c",
+                  "src/platform/ps4/controller_bluetooth.c", "src/platform/ps4/dualsense_bluetooth.c",
+                  "src/platform/ps4/dualsense_bluetooth_window.c"]
+    if "src/app/bridge_session.c" in files:
+        files += ["src/protocol/controller.c", "src/protocol/dualsense.c"]
+    if "src/platform/ps4/usb.c" in files:
+        files += ["src/platform/ps4/dualsense_usb.c", "src/platform/ps4/dualsense_usb_window.c"]
     objects = []
     flags = ["-target", "x86_64-scei-ps4", "--sysroot=" + str(sdk),
              "-isystem", str(sdk / "target/include"), "-Iinclude", "-Ivendor/control4free", "-std=gnu11",
              "-Wall", "-Wextra", "-Werror", "-O2", "-g", "-fPIC",
              "-fno-stack-protector", "-fno-plt", "-femulated-tls",
              "-fvisibility-nodllstorageclass=default", f'-DDT_VERSION="{version}"']
+    if unified: flags += ["-DDT_LOG_SYNC"]
     if release:
         flags += ["-g0", f"-ffile-prefix-map={ROOT}=."]
     if menu_probe: flags += ["-DDT_VDA_MENU_PROBE"]
@@ -264,6 +296,7 @@ def payload(target, preserve_latest=False):
     if bluetooth_radio: flags += ["-DDT_BT_LISTEN_SECONDS=60u"]
     if bluetooth_pairing: flags += ["-DDT_BT_PAIRING_RESTORE" if bluetooth_restore else "-DDT_BT_PAIRING_PROBE"]
     if bluetooth_host: flags += ["-DDT_BT_HOST_PROBE"]
+    if not bridge and not unified: flags += ["-DDT_USB_DS3_ONLY"]
     if probe: flags += ["-DDT_USB_PROBE"]
     if wait: flags += ["-DDT_USB_PROBE_WAIT"]
     if packet64: flags += ["-DDT_USB_PROBE_PACKET64"]
@@ -316,6 +349,7 @@ def payload(target, preserve_latest=False):
             "sources_sha256": {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
                                for name in files + [str(p.relative_to(ROOT)) for p in sorted((ROOT / "include").rglob("*.h"))]
                                + ["src/platform/ps4/usbd_abi.h"]
+                               + (["src/platform/ps4/dualsense_usb.h"] if "src/platform/ps4/usb.c" in files else [])
                                + (["src/platform/ps4/bluetooth_native_abi.h"] if bluetooth_native or bluetooth_bridge else [])
                                + (["vendor/control4free/c4f_sce.h", "vendor/control4free/c4f_vda.h"] if bridge or bluetooth_bridge else [])}}
     if menu_probe:

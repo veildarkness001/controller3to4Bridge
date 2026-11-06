@@ -10,6 +10,21 @@ The 1.2.3 ELF was tested with **PS4 firmware 13.52, GoldHEN v2.4b18.12, and an o
 
 Bluetooth requires a DS3 already paired to the PS4; initial pairing is not included. USB does not require Bluetooth pairing. Rumble is not implemented.
 
+**Development candidate 1.4.2 combines DS3 and original Sony DualSense (`054c:0ce6`) over USB and internal Bluetooth in one ELF.** DualSense USB is restricted to PS4 firmware 13.52 and the checked controller revision (`bcdDevice=0x0100`); other revisions/firmware are ignored by this USB path. DS3 USB keeps priority when both wired models are attached. Choose one Bluetooth profile before starting the bridge; DS3 and DualSense native listeners cannot run together. One physical controller is selected at a time.
+
+| Controller | USB | Internal Bluetooth |
+| --- | --- | --- |
+| Original Sony DS3 | Supported | DS3 profile, already paired |
+| Original Sony DualSense | Candidate 1.4.2: PS4 13.52, checked revision 0x0100 | DualSense profile, basic controls |
+
+DualSense Bluetooth in the integrated 1.4.1 ELF was checked on PS4 13.52: user selection, menus, brief gameplay, deliberate menu power-off/reactivation and disconnect/recovery, followed by verified clean shutdown. The run ended with 17,932 valid reports, no invalid reports, three physical sessions and one read error during the deliberate disconnect tests. DS3 USB was also checked with user selection, brief gameplay and clean shutdown while the DualSense Bluetooth profile remained selected; no Bluetooth backend was created. DS3 Bluetooth also passed user selection, brief gameplay and verified cleanup with the same ELF. Transport changes in this candidate, long sessions, rest mode and other firmware remain pending. The first experimental 1.4.0 USB candidate load was followed by a console power-off whose cause remains unknown; that binary is retained as a failed development candidate.
+
+A separate DualSense USB diagnostic on PS4 13.52 completed user selection, menus and brief gameplay: 78,760 valid reports over 189 seconds, with zero invalid reports, read errors or stale-stream events. Shutdown verified virtual-device deletion, permissions and the original per-device USB state. **The integrated 1.4.2 ELF has not yet been tested on console.** Its unplug/reconnect, transport changes and DS3 regressions require hardware checks; host simulations do not establish these results.
+
+DualSense basic Bluetooth mode maps face buttons, D-pad, sticks, shoulders, analog triggers and PS to PS4. Create maps directly to Share, Options to Options, and the touchpad button maps to its click. Create leaves the right stick and R3 independent. **Touch positions, gestures and motion are unavailable in this mode.** USB uses the full 64-byte report and maps native touch contacts; touch positions and gestures have not been separately verified on console. Automatic requests for enhanced Bluetooth mode remain disabled by default because continuous wireless input has only been established in basic mode. Raw motion samples are not converted to PS4 motion input.
+
+DualSense Edge and third-party devices are excluded. Do not use DS3 pairing tools on a DualSense. Battery display, microphone/mute actions, speaker/headset audio, rumble/haptics, adaptive trigger effects and DualSense LED control are not forwarded.
+
 ## Controls
 
 | DualShock 3 | PS4 action |
@@ -38,6 +53,10 @@ Release Select to use the right stick normally again. Touchpad emulation support
 
 For Bluetooth, hold **PS** and open **Sound/Devices → Turn Off Device** to turn off the DS3. It appears as **DUALSHOCK 4**; pressing **PS** activates it again. With USB connected, this action disables virtual input until you unplug the cable. A physical DS4 can have the same menu name, so the name alone does not distinguish them. One Bluetooth menu power-off and PS reactivation cycle was confirmed on PS4 with 1.2.2. Wired menu power-off and coexistence with an active physical DS4 remain untested.
 
+For development candidate 1.4.2, choose the Bluetooth controller with the bridge stopped. Upload a small plain-text file named **`/data/dualshock_to_ps4/bluetooth-controller`** containing `dualsense` or `ds3`. A missing file defaults to `ds3`; an invalid file stops activation. DS3 USB and the supported DualSense USB path work in either profile without Bluetooth pairing. USB takes priority; when both wired models are connected, DS3 is selected first. Restart the bridge after changing profiles.
+
+For the first DualSense Bluetooth registration, start the bridge with the `dualsense` profile while the controller is unplugged, then use PS4 **Settings → Devices → Bluetooth Devices**. Put the DualSense into pairing mode with **Create + PS**, select **Wireless Controller**, and accept **Yes** promptly. After registration, press **PS** to reconnect and choose a PS4 user. The DS3 profile retains its existing pairing requirement. Keep the development candidate out of AutoRun while its remaining hardware checks are pending.
+
 See [CHANGELOG.md](CHANGELOG.md) for release changes.
 
 ## Run manually from a computer
@@ -62,8 +81,8 @@ This loads the ELF for the current session; it does not add it to AutoRun. If th
 ```text
 include/dt/        Shared interfaces and controller state
 src/
-  app/             USB and Bluetooth bridges and session management
-  protocol/        DS3 input decoding
+  app/             Bridges, controller profile and session management
+  protocol/        DS3 and DualSense input decoding
   transport/       Automatic USB/Bluetooth selection and Bluetooth transport
   platform/ps4/    PS4 USB, Bluetooth, and virtual controller support
   output/          PS4 control mapping and touchpad emulation
@@ -73,6 +92,15 @@ vendor/            Third-party source and licenses
 work/              Local dependencies, temporary files, and logs (ignored by Git)
 outputs/           Built ELF files and checksums (ignored by Git)
 ```
+
+Local verification and build (does not deploy to the console):
+
+```sh
+python3 tools/build.py test
+python3 tools/build.py release --preserve-latest
+```
+
+Keep the candidate out of AutoRun until the integrated 1.4.2 hardware checks are complete, including DS3 regressions, DualSense USB reconnection and USB/Bluetooth changes. The isolated USB diagnostic establishes initial compatibility, not validation of this new ELF.
 
 ## Acknowledgements
 
@@ -84,6 +112,7 @@ This project builds on work shared by the PS4 homebrew and controller developmen
 - **John Törnblom and the [ps4-payload-sdk contributors](https://github.com/ps4-payload-dev/sdk)**, for the SDK, startup code, and runtime used to build the payloads; and the **[libusb authors](https://github.com/libusb/libusb)**, whose descriptor declarations informed the reduced USB ABI declarations.
 - **The [OpenOrbis](https://github.com/OpenOrbis/OpenOrbis-PS4-Toolchain) and [shadPS4](https://github.com/shadps4-emu/shadPS4) contributors**, for references used to check PS4 USB interfaces, cleanup signatures, and timeout behavior.
 - **[nefarius and the DsHidMini contributors](https://github.com/nefarius/DsHidMini)**, together with the **[SDL](https://github.com/libsdl-org/SDL) and [Linux HID](https://github.com/torvalds/linux/blob/master/drivers/hid/hid-sony.c) contributors**, for DS3 report layouts and initialization references, including the explicit USB F4 activation command.
+- **Sony Interactive Entertainment and the Linux hid-playstation contributors**, and the **SDL HIDAPI PS5 contributors**, for public DualSense report and transport references.
 - **Kristian Sloth Lauszus and the [USB Host Shield 2.0 contributors](https://github.com/felis/USB_Host_Shield_2.0)**, the **[BlueZ contributors](https://github.com/bluez/bluez)**, and the authors of **[sixpair](https://github.com/lakkatv/sixpair)**, for DS3 Bluetooth framing, activation, and USB pairing references.
 - **[idc](https://github.com/idc)** for **[ps4libdoc](https://github.com/idc/ps4libdoc)**, and the **[SharpEmu contributors](https://github.com/sharpemu/sharpemu)**, for references consulted during research into native Bluetooth interfaces.
 - **[crucifix86](https://github.com/crucifix86)**, author of **[xbox_controller_plugin](https://github.com/crucifix86/xbox_controller_plugin)**, for an additional reference on PS4 USB controller access.

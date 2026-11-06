@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.4.2] - Unreleased
+
+- Enable the checked DualSense USB path in the unified ELF on PS4 13.52 with controller revision 0x0100, alongside DS3 USB and both existing Bluetooth profiles. DS3 wins when both wired models are attached.
+- Add a guarded per-device USB configuration window that preserves other quirks, verifies physical configuration and interfaces, and restores the original state before closing a connected handle. Never write to a confirmed departed or replacement connection; uncertain access or restoration stops further activation. No executable or global quirk-table patches.
+- Hand acquired input to the virtual-pad session without reopening the USB device after VDA creation. Keep model-specific setup out of protocol decoding and preserve exclusive Bluetooth backends.
+- Add failure, partial-write, restoration, connection-generation, unplug/replacement, fatal-lifecycle and handoff regression coverage. Unsupported firmware/revisions remain excluded from DualSense USB detection.
+
+An isolated DualSense USB bridge completed user selection, menus and brief gameplay on PS4 13.52: 189 seconds, 78,760 valid reports, zero invalid reports/read errors/stale events, and verified VDA/permission/USB-state cleanup. This validates the isolated mechanism; **the integrated 1.4.2 ELF has not been tested on console**. Unplug/reconnect, transport changes, prolonged use and all controller regressions in this exact ELF remain hardware checks.
+
+## [1.4.1] - Unreleased
+
+- Integrate an exclusive DualSense Bluetooth backend in the unified ELF. Select `ds3` or `dualsense` with `/data/dualshock_to_ps4/bluetooth-controller`; missing configuration preserves the DS3 default. DS3 USB retains priority in either profile.
+- Use DualSense basic Bluetooth input by default, preserving buttons, analog controls, Create/Share and touchpad click. Full touch positions, motion and feedback remain unavailable. Enhanced-mode output requests are experimental and disabled by default.
+- Verify complete firmware 13.52 instructions before enabling the temporary DualSense classification window, and verify cleanup, link absence and restoration before another activation. DS3 and DualSense native listeners are mutually exclusive.
+- Disable DualSense USB detection in normal builds: enumeration/open/claim succeeded in diagnostics, but no valid input was obtained. Preserve the parser and opt-in USB prototype for further research.
+- Synchronize file logs before kernel-log emission in unified builds. Add profile, model dispatch, Bluetooth cleanup, basic-input session and logging-order coverage; make sanitizer errors fail the host suite. Correct intermediate pointer arithmetic in the existing admission test's simulated memory.
+
+The integrated 1.4.1 ELF completed DualSense Bluetooth user selection, menus and brief gameplay on PS4 13.52. Deliberate menu power-off/reactivation and disconnect/recovery were also exercised. The run closed with 17,932 valid reports, zero invalid reports, three physical sessions and one read error during the deliberate disconnect tests; VDA, Bluetooth, permissions and USB cleanup were verified. DS3 USB also passed user selection and brief gameplay, with 11,613 valid reports, zero invalid reports/read errors and verified cleanup in a 116-second session; the DualSense Bluetooth profile remained selected and no Bluetooth backend was created. DS3 Bluetooth passed the same checks in a 68-second session with 5,773 valid reports, zero invalid reports/read errors and verified cleanup. The same ELF SHA256 was used for all three controller/transport cases. Transport changes in this candidate, rest mode and prolonged use remain pending.
+
+## [1.4.0] - Experimental, not released
+
+- Prepare typed DS3/DualSense report dispatch, USB detection and full-report decoding, native two-contact mapping, and portable Bluetooth protocol support.
+- First full candidate load was followed by a console power-off; the startup log was not recovered and the cause remains unconfirmed. Subsequent USB diagnostics produced no valid DualSense input. Do not treat this candidate as hardware-validated support.
+
 ## [1.3.0] - 2026-10-20
 
 - Unify USB and internal Bluetooth support in one release ELF, with automatic USB priority and a fresh controller session when changing transport.

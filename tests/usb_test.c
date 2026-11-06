@@ -3,6 +3,7 @@
 #include "dt/ps4_usb_probe.h"
 #endif
 #include "../src/platform/ps4/usbd_abi.h"
+#include "../src/platform/ps4/dualsense_usb.h"
 #include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -11,6 +12,19 @@
 
 enum { LOAD_FAIL = 1, SYMBOL_FAIL, INIT_FAIL, CONFIG_FAIL, NO_ENDPOINT,
        OPEN_FAIL, CLAIM_FAIL, F2_SHORT, F5_SHORT, F4_SHORT, SUCCESS };
+static uint16_t product = 0x0268;
+static uint16_t revision = 0x0100;
+static int window_begins,window_ends,window_begin_result,window_end_result;
+int dt_ps4_dualsense_usb_supported(uint16_t rev) {return rev==0x0100;}
+int dt_ps4_dualsense_usb_begin(DtDualSenseUsb **out,void *module,DtUsbHandle *handle,const DtUsbdApi *api,int interface,uint8_t endpoint)
+{
+    assert(module && handle && api && interface==0 && endpoint==0x81);
+    ++window_begins;*out=window_begin_result==-1?NULL:(DtDualSenseUsb *)0x555;
+    return window_begin_result;
+}
+int dt_ps4_dualsense_usb_end(DtDualSenseUsb **out)
+{if(!*out)return 0;assert(*out==(DtDualSenseUsb *)0x555);++window_ends;*out=NULL;return window_end_result;}
+static int controls;
 static int scenario, exits, closes, releases, freed_lists, freed_configs, unloaded;
 static int transfer_result, transfer_size, present = 1, kick_result, kicks;
 static uint64_t now;
@@ -39,7 +53,7 @@ static void finish(void) { ++exits; }
 static int64_t list(DtUsbDevice ***out) { *out = devices; return present; }
 static void free_list(DtUsbDevice **p, int32_t unref) { assert(p == devices && unref == 1); ++freed_lists; }
 static int32_t descriptor(DtUsbDevice *d, DtUsbDescriptor *out)
-{ (void)d; memset(out, 0, sizeof(*out)); out->vendor = 0x054c; out->product = 0x0268; return 0; }
+{ (void)d; memset(out, 0, sizeof(*out)); out->vendor = 0x054c; out->product = product; out->device=revision; return 0; }
 static int32_t get_config(DtUsbDevice *d, DtUsbConfig **out)
 { (void)d; if (scenario == CONFIG_FAIL) return -1; *out = &config; return 0; }
 static void free_config(DtUsbConfig *p) { assert(p == &config); ++freed_configs; }
@@ -53,6 +67,7 @@ static int32_t release(DtUsbHandle *h, int32_t i)
 static int32_t control(DtUsbHandle *h, uint8_t type, uint8_t req, uint16_t value,
                        uint16_t index, unsigned char *data, uint16_t size, uint32_t timeout)
 {
+    ++controls;
     if (value == 0x03f5 && type == 0x21) {
         const uint8_t expected[8]={1,0,1,2,3,4,5,6};
         assert(req==9 && index==0 && size==8 && timeout==250);
@@ -97,7 +112,7 @@ static int32_t interrupt(DtUsbHandle *h, unsigned char ep, unsigned char *data,
 #ifdef DT_USB_PROBE_PACKET64
     assert(size == 64);
 #else
-    assert(size == 128);
+    assert(size == (product == 0x0ce6 ? 64 : 128));
 #endif
     memset(data, 0, (size_t)size); data[0] = 1;
     *transferred = transfer_size; return transfer_result;
@@ -253,5 +268,56 @@ int main(void)
     }
     release_result = unload_result = 0;
     assert(dt_ps4_usb_destroy(&t) < 0);
+#if !defined(DT_USB_PROBE) && !defined(DT_USB_DS3_ONLY)
+    /* Composite DualSense selects HID, streams without DS3 feature/output
+     * writes, tags report identity, and refuses DS3 pairing operations. */
+    product = 0x0ce6; controls = kicks = f4_calls = 0;
+    alt.endpoint_count = 2; scenario = SUCCESS;
+    assert(dt_ps4_usb_create(&t) == 0);
+    assert(dt_ps4_usb_present(&t) == 1 && controls == 0);
+    assert(t.ops->reconnect(t.context) == 1);
+    assert(controls == 0 && kicks == 0 && f4_calls == 0);
+    assert(dt_ps4_usb_pairing_read(&t, identity, host) < 0);
+    assert(dt_ps4_usb_pairing_write(&t, new_host) < 0 && controls == 0);
+    transfer_result = 0; transfer_size = 64;
+    assert(t.ops->read_report(t.context, &report, 4) == 1);
+    assert(report.size == 64 && report.format == DT_REPORT_DUALSENSE_USB);
+    transfer_size = 65;
+    assert(t.ops->read_report(t.context, &report, 4) < 0);
+    /* A different model after reconnect must replace the per-handle identity. */
+    product = 0x0268; transfer_size = 49;
+    assert(t.ops->reconnect(t.context) == 1 && f4_calls == 1);
+    assert(t.ops->read_report(t.context, &report, 4) == 1 && report.format == DT_REPORT_DS3);
+    product = 0x0ce6;
+    endpoints[0].max_packet = 49;
+    assert(t.ops->reconnect(t.context) < 0);
+    endpoints[0].max_packet = 64;
+    product = 0x0df2; /* Edge and third-party devices are not implicitly allowed. */
+    assert(dt_ps4_usb_present(&t) == 0 && t.ops->reconnect(t.context) == 0);
+    assert(dt_ps4_usb_destroy(&t) == 0);
+    product=0x0ce6;revision=0x0101;
+    assert(dt_ps4_usb_create(&t)==0);
+    assert(dt_ps4_usb_present(&t)==0 && t.ops->reconnect(t.context)==0);
+    assert(dt_ps4_usb_destroy(&t)==0);revision=0x0100;
+    for(int failure=0;failure<3;++failure) {
+        window_begin_result=failure==0?-1:failure==1?-2:0;
+        window_end_result=failure==2?-1:0;
+        assert(dt_ps4_usb_create(&t)==0);
+        int connected=t.ops->reconnect(t.context);
+        if(failure<2)assert(connected<0 && dt_ps4_usb_status(&t)!=0);
+        else assert(connected==1);
+        int begins=window_begins;
+        if(failure==2)assert(t.ops->reconnect(t.context)<0);
+        assert(t.ops->reconnect(t.context)<0 && window_begins==begins);
+        assert(dt_ps4_usb_destroy(&t)!=0);
+    }
+    window_begin_result=window_end_result=0;
+    assert(window_begins>=4 && window_ends>=3);
+#else
+    product = 0x0ce6;
+    assert(dt_ps4_usb_create(&t) == 0);
+    assert(dt_ps4_usb_present(&t) == 0 && t.ops->reconnect(t.context) == 0);
+    assert(dt_ps4_usb_destroy(&t) == 0);
+#endif
     puts("PASS USB lifecycle: load/symbol/init/config/endpoint/open/claim/feature failures, cleanup and reads");
 }

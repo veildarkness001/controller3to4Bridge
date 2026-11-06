@@ -50,7 +50,6 @@ void dt_log(const char *format, ...)
     va_end(args);
     if (n < 0) return;
     size_t size = (size_t)n < sizeof(buf) ? (size_t)n : sizeof(buf) - 1;
-    klog_printf("[DualShockToPS4] %s", buf);
     if (log_fd >= 0 && log_size + size > LOG_LIMIT) {
         close(log_fd); log_fd = -1;
         /* At most two 512 KiB files, even during repeated cable failures. */
@@ -65,6 +64,11 @@ void dt_log(const char *format, ...)
         log_size += (size_t)written;
         offset += (size_t)written;
     }
+#ifdef DT_LOG_SYNC
+    /* Retain the phase on disk before emitting to the kernel logger. */
+    if(log_fd>=0)(void)fsync(log_fd);
+#endif
+    klog_printf("[DualShockToPS4] %s", buf);
 }
 
 void dt_log_close(void)

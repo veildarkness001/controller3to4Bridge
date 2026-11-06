@@ -1,7 +1,7 @@
 #include "dt/auto_transport.h"
 #include "dt/bridge_session.h"
 #include "dt/ps4_usb.h"
-#include "dt/ps4_bluetooth.h"
+#include "dt/controller_bluetooth.h"
 #include "dt/log.h"
 #include <fcntl.h>
 #include <sys/file.h>
@@ -12,11 +12,14 @@
 #endif
 #define STOP_FILE "/data/dualshock_to_ps4/stop"
 
+typedef struct {DtTransport *usb,*bluetooth;} StopContext;
 static int should_stop(void *context)
 {
-    DtTransport *bluetooth = context;
+    StopContext *state=context;
+    DtTransport *bluetooth = state->bluetooth;
     if (access(STOP_FILE, F_OK) == 0) return 1;
-    return bluetooth->ops && dt_ps4_bluetooth_status(bluetooth) != 0;
+    if(state->usb->ops && dt_ps4_usb_status(state->usb)!=0)return 1;
+    return bluetooth->ops && dt_controller_bluetooth_status(bluetooth) != 0;
 }
 static int unified_session(DtBridgeStats *stats, int *usb_power_off)
 {
@@ -25,6 +28,11 @@ static int unified_session(DtBridgeStats *stats, int *usb_power_off)
     DtVirtualPad *pad = NULL;
     int status = 1;
     *usb_power_off = 0;
+    DtBluetoothController controller;
+    if(dt_bluetooth_profile_load(&controller)!=0) {
+        dt_log("invalid Bluetooth controller profile; activation aborted\n");goto done;
+    }
+    dt_log("Bluetooth controller profile=%s\n",controller==DT_BT_CONTROLLER_DUALSENSE?"dualsense":"ds3");
     if (dt_ps4_usb_create(&usb) != 0) goto done;
     /* Native BT temporarily owns event caps; VDA must snapshot them afterward.
      * Safe unavailability (e.g. no pairing) leaves USB available. Failed
@@ -32,16 +40,17 @@ static int unified_session(DtBridgeStats *stats, int *usb_power_off)
     int wired = dt_ps4_usb_present(&usb);
     if (wired < 0) goto done;
     if (!wired) {
-        int bt = dt_ps4_bluetooth_create(&bluetooth);
+        int bt = dt_controller_bluetooth_create(&bluetooth,controller);
         if (bt == -2) { status = 6; goto done; }
         if (bt != 0) dt_log("Bluetooth unavailable; USB remains available for this activation\n");
     } else dt_log("USB activation; Bluetooth backend not created\n");
     if (dt_auto_transport_init(&transport, &selection, &usb,
                               bluetooth.ops ? &bluetooth : NULL, dt_ps4_usb_present,
-                              dt_ps4_bluetooth_quiesce) != 0) goto done;
-    const DtBridgeConfig config = {.should_stop = should_stop, .context = &bluetooth,
+                              dt_controller_bluetooth_quiesce) != 0) goto done;
+    StopContext stop_context={&usb,&bluetooth};
+    const DtBridgeConfig config = {.should_stop = should_stop, .context = &stop_context,
                                    .restart_on_input_loss = 1};
-    dt_log("waiting for DS3 input over USB or paired Bluetooth; no virtual controller yet\n");
+    dt_log("waiting for supported USB or selected paired Bluetooth controller; no virtual controller yet\n");
     int ready = dt_bridge_wait_for_input(&transport, &config);
     if (ready == DT_BRIDGE_INPUT_LOST) { status = ready; goto done; }
     if (ready <= 0) { status = ready < 0 ? 1 : 0; goto done; }
@@ -50,14 +59,16 @@ static int unified_session(DtBridgeStats *stats, int *usb_power_off)
     if (selection.active == &usb && bluetooth.ops) {
         status = DT_BRIDGE_INPUT_LOST; goto done;
     }
+    selection.reuse_active=1;
     if (dt_virtual_open(&pad) != 0) goto done;
-    dt_log("ready for DS3 user selection; USB takes priority\n");
+    dt_log("ready for controller user selection; USB takes priority\n");
     status = dt_bridge_run(&transport, pad, &config, stats);
     *usb_power_off = status == DT_BRIDGE_POWER_OFF && selection.active == &usb;
 done:
-    if (bluetooth.ops && dt_ps4_bluetooth_status(&bluetooth) != 0) status = 7;
+    if (usb.ops && dt_ps4_usb_status(&usb)!=0) status=10;
+    if (bluetooth.ops && dt_controller_bluetooth_status(&bluetooth) != 0) status = 7;
     if (pad && dt_virtual_close(pad) != 0) status = 5;
-    if (bluetooth.ops && dt_ps4_bluetooth_destroy(&bluetooth) != 0) status = 6;
+    if (bluetooth.ops && dt_controller_bluetooth_destroy(&bluetooth) != 0) status = 6;
     /* A powered-off wired controller cannot signal a fresh PS connection.
      * Wait for unplug before arming it again instead of reopening the selector. */
     if (status == DT_BRIDGE_POWER_OFF && *usb_power_off) {

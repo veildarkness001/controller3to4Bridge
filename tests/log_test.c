@@ -6,7 +6,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-void klog_printf(const char *format, ...) { (void)format; }
+#ifdef DT_TEST_LOG_SYNC
+static unsigned syncs,messages;
+int dt_test_fsync(int fd) {assert(fd>=0);++syncs;return 0;}
+#endif
+void klog_printf(const char *format, ...)
+{
+    (void)format;
+#ifdef DT_TEST_LOG_SYNC
+    ++messages;assert(syncs>=messages); /* Sync the file before kernel output. */
+#endif
+}
 int main(void)
 {
     const char *current = "work/tests/logs/rotation.log";

@@ -4,6 +4,8 @@
 static int reconnect(void *context)
 {
     DtAutoTransport *s = context;
+    if(s->reuse_active && s->active) {s->reuse_active=0;return 1;}
+    s->reuse_active=0;
     s->active = NULL;
     DtTransport *choices[] = {s->usb, s->bluetooth};
     int usb_present = s->usb && s->usb_present ? s->usb_present(s->usb) : 0;

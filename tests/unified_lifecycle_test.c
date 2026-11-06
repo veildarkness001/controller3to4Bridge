@@ -15,7 +15,7 @@
 enum { NORMAL, USB_ONLY, USB_CREATE_FAIL, BT_ROLLBACK_FAIL, WAIT_STOP,
        BT_FAULT, PAD_OPEN_FAIL, PAD_CLOSE_FAIL, BT_CLOSE_FAIL, BT_POWER,
        USB_POWER, USB_POWER_STOP, TRANSPORT_CHANGE, WAIT_LOSS, USB_CLOSE_FAIL,
-       LOSS_PAD_CLOSE_FAIL, LOSS_BT_CLOSE_FAIL, USB_RACE, USB_PROBE_FAIL };
+       LOSS_PAD_CLOSE_FAIL, LOSS_BT_CLOSE_FAIL, USB_RACE, USB_PROBE_FAIL, PROFILE_INVALID, DUALSENSE_PROFILE, USB_FATAL };
 static int scenario, live_usb, live_bt, live_pad, runs, creates, pad_closes, destroys;
 static int stop_file, unplugs, bt_creates;
 static DtAutoTransport *selection;
@@ -48,7 +48,7 @@ int dt_ps4_usb_present(DtTransport *t)
 {
     assert(t->ops && live_usb);
     if (scenario == USB_PROBE_FAIL) return -1;
-    return (scenario == USB_ONLY || scenario == USB_POWER || scenario == USB_POWER_STOP ||
+    return (scenario == USB_ONLY || scenario == USB_FATAL || scenario == USB_POWER || scenario == USB_POWER_STOP ||
             (scenario == USB_RACE && creates > 1)) && !unplugs;
 }
 int dt_ps4_usb_destroy(DtTransport *t)
@@ -57,20 +57,22 @@ int dt_ps4_usb_destroy(DtTransport *t)
     usb_close(t->context); *t = (DtTransport){0};
     return scenario == USB_CLOSE_FAIL ? -1 : 0;
 }
-int dt_ps4_bluetooth_create(DtTransport *t)
+int dt_ps4_usb_status(const DtTransport *t) {(void)t;return scenario==USB_FATAL?-1:0;}
+int dt_controller_bluetooth_create(DtTransport *t,DtBluetoothController controller)
 {
     assert(live_usb && !live_pad && !live_bt);
+    assert(controller==(scenario==DUALSENSE_PROFILE?DT_BT_CONTROLLER_DUALSENSE:DT_BT_CONTROLLER_DS3));
     ++bt_creates;
     if (scenario == BT_ROLLBACK_FAIL) return -2;
     if (scenario == USB_ONLY) return -1;
     live_bt = 1; *t = (DtTransport){.ops = &ops, .kind = DT_TRANSPORT_BLUETOOTH}; return 0;
 }
-int dt_ps4_bluetooth_status(const DtTransport *t)
+int dt_controller_bluetooth_status(const DtTransport *t)
 { assert(t->ops && live_bt); return scenario == BT_FAULT ? -1 : 0; }
-int dt_ps4_bluetooth_service(DtTransport *t, unsigned timeout)
+int dt_controller_bluetooth_service(DtTransport *t, unsigned timeout)
 { (void)t; (void)timeout; assert(0); return -1; }
-int dt_ps4_bluetooth_quiesce(DtTransport *t) { assert(t->ops && live_bt); return 0; }
-int dt_ps4_bluetooth_destroy(DtTransport *t)
+int dt_controller_bluetooth_quiesce(DtTransport *t) { assert(t->ops && live_bt); return 0; }
+int dt_controller_bluetooth_destroy(DtTransport *t)
 {
     assert(live_bt && !live_pad); ++destroys; live_bt = 0; *t = (DtTransport){0};
     return scenario == BT_CLOSE_FAIL || scenario == LOSS_BT_CLOSE_FAIL ? -1 : 0;
@@ -80,7 +82,7 @@ int dt_auto_transport_init(DtTransport *t, DtAutoTransport *s, DtTransport *u,
                           int (*quiesce)(DtTransport *))
 {
     assert(live_usb && !live_pad && probe == dt_ps4_usb_present);
-    assert(quiesce == dt_ps4_bluetooth_quiesce);
+    assert(quiesce == dt_controller_bluetooth_quiesce);
     assert((b != NULL) == live_bt);
     *s = (DtAutoTransport){.usb = u, .bluetooth = b, .active = b ? b : u}; selection = s;
     *t = (DtTransport){.ops = &ops, .kind = DT_TRANSPORT_AUTO}; return 0;
@@ -89,6 +91,7 @@ int dt_bridge_wait_for_input(DtTransport *t, const DtBridgeConfig *c)
 {
     assert(t->kind == DT_TRANSPORT_AUTO && !live_pad);
     assert(c->restart_on_input_loss);
+    if(scenario==USB_FATAL) {assert(c->should_stop(c->context));return 0;}
     if (scenario == WAIT_LOSS && creates == 1) return DT_BRIDGE_INPUT_LOST;
     if (scenario == WAIT_STOP) { stop_file = 1; assert(c->should_stop(c->context)); return 0; }
     if (scenario == BT_FAULT) { assert(c->should_stop(c->context)); return 0; }
@@ -98,6 +101,7 @@ int dt_bridge_wait_for_input(DtTransport *t, const DtBridgeConfig *c)
 int dt_virtual_open(DtVirtualPad **p)
 {
     assert(!live_pad && live_usb);
+    assert(selection->reuse_active==1);
     assert((selection->active == selection->usb) == !live_bt);
     if (scenario == PAD_OPEN_FAIL) return -1;
     live_pad = 1; *p = (DtVirtualPad *)1; return 0;
@@ -119,16 +123,16 @@ int dt_bridge_run(DtTransport *t, DtVirtualPad *p, const DtBridgeConfig *c, DtBr
 }
 int main(void)
 {
-    for (scenario = NORMAL; scenario <= USB_PROBE_FAIL; ++scenario) {
+    for (scenario = NORMAL; scenario <= USB_FATAL; ++scenario) {
         live_usb = live_bt = live_pad = runs = creates = pad_closes = destroys = 0;
         stop_file = unplugs = bt_creates = 0;
         int result = dt_unified_main();
         assert(!live_usb && !live_bt && !live_pad);
-        if (scenario == USB_CREATE_FAIL || scenario == PAD_OPEN_FAIL || scenario == USB_PROBE_FAIL) assert(result == 1 && !runs);
+        if (scenario == USB_CREATE_FAIL || scenario == PAD_OPEN_FAIL || scenario == USB_PROBE_FAIL || scenario == PROFILE_INVALID) assert(result == 1 && !runs);
         else if (scenario == BT_ROLLBACK_FAIL || scenario == BT_CLOSE_FAIL || scenario == LOSS_BT_CLOSE_FAIL) assert(result == 6 && creates == 1);
         else if (scenario == BT_FAULT) assert(result == 7 && !runs);
         else if (scenario == PAD_CLOSE_FAIL || scenario == LOSS_PAD_CLOSE_FAIL) assert(result == 5 && creates == 1);
-        else if (scenario == USB_CLOSE_FAIL) assert(result == 10 && creates == 1);
+        else if (scenario == USB_CLOSE_FAIL || scenario==USB_FATAL) assert(result == 10 && creates == 1);
         else assert(result == 0);
         if (scenario == USB_ONLY) assert(runs == 1 && !destroys && !bt_creates);
         if (scenario == BT_POWER || scenario == USB_POWER) assert(creates == 2 && runs == 2 && pad_closes == 2);
@@ -138,6 +142,10 @@ int main(void)
         if (scenario == WAIT_LOSS) assert(creates == 2 && runs == 1 && pad_closes == 1 && destroys == 2);
         if (scenario == USB_RACE) assert(creates == 2 && runs == 1 && pad_closes == 1 && bt_creates == 1 && destroys == 1);
         if (scenario == USB_PROBE_FAIL) assert(!bt_creates && !pad_closes);
+        if (scenario == USB_FATAL) assert(!bt_creates && !pad_closes && !runs);
     }
     puts("PASS unified app: deferred activation, optional BT, fatal rollback, VDA-before-BT cleanup, idle event servicing, menu reactivation and wired unplug rearm");
 }
+
+int dt_bluetooth_profile_load(DtBluetoothController *out)
+{if(scenario==PROFILE_INVALID)return -1;*out=scenario==DUALSENSE_PROFILE?DT_BT_CONTROLLER_DUALSENSE:DT_BT_CONTROLLER_DS3;return 0;}

@@ -7,6 +7,8 @@ extern const size_t KERNEL_IMAGE_SIZE;
 extern const intptr_t KERNEL_ADDRESS_IMAGE_BASE;
 uint32_t kernel_get_fw_version(void);
 int32_t kernel_copyout(intptr_t address, void *out, size_t size);
+int32_t kernel_copyin(const void *in, intptr_t address, size_t size);
+intptr_t kernel_get_proc_filedesc(pid_t pid);
 int kernel_patch(intptr_t address, const void *before, const void *after, uint16_t size);
 intptr_t kernel_dynlib_dlsym(pid_t pid, uint32_t module, const char *symbol);
 int kernel_dynlib_handle(pid_t pid, const char *basename, uint32_t *handle);

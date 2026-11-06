@@ -10,6 +10,8 @@ typedef struct {
     int (*usb_present)(DtTransport *usb);
     int (*quiesce_bluetooth)(DtTransport *bluetooth);
     uint64_t next_probe;
+    /* Activation owner requests one handoff of its already acquired handle. */
+    int reuse_active;
 } DtAutoTransport;
 int dt_auto_transport_init(DtTransport *out, DtAutoTransport *state,
                           DtTransport *usb, DtTransport *bluetooth,

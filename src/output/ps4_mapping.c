@@ -53,6 +53,20 @@ void dt_ps4_map(DtPs4Mapping *m, const DtControllerState *state,
     out->lx = state->lx; out->ly = state->ly;
     out->rx = state->rx; out->ry = state->ry;
     out->l2 = state->l2; out->r2 = state->r2;
+    if (state->native_touch) {
+        /* Create is immediate Share; the right stick and R3 stay independent.
+         * Cancel any DS3 gesture if the physical controller changed. */
+        dt_ps4_mapping_reset(m);
+        if (state->touch_click) out->buttons |= 0x100000u;
+        unsigned count = state->touch_count > 2 ? 2 : state->touch_count;
+        out->touchData.fingers = (uint8_t)count;
+        for (unsigned i = 0; i < count; ++i) {
+            out->touchData.touch[i].x = state->touch[i].x;
+            out->touchData.touch[i].y = state->touch[i].y;
+            out->touchData.touch[i].finger = state->touch[i].id;
+        }
+        return;
+    }
     out->buttons &= ~1u;
     int select = (state->buttons & 1u) != 0;
     if (!(state->buttons & 4u)) m->r3_consumed = 0;

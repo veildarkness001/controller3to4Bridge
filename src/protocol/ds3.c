@@ -5,7 +5,8 @@ int dt_ds3_decode(const DtInputReport *report, DtControllerState *out)
 {
     DtControllerState decoded = {0};
     const uint8_t *p;
-    if (!report || !out || report->size < 49 || report->size > sizeof(report->data))
+    if (!report || !out || report->format != DT_REPORT_DS3 ||
+        report->size < 49 || report->size > sizeof(report->data))
         return -1;
     p = report->data;
     if (p[0] != 0x01 || p[1] == 0xff) return -1;

@@ -43,7 +43,7 @@ int dt_bridge_wait_for_input(DtTransport *t, const DtBridgeConfig *config)
             if ((config->should_stop && config->should_stop(config->context)) ||
                 (config->max_duration_us && now - start >= config->max_duration_us))
                 return 0;
-            if (ret > 0 && dt_ds3_decode(&report, &state) == 0) return 1;
+            if (ret > 0 && dt_controller_decode(&report, &state) == 0) return 1;
             if (ret < 0 || now - connected_at >= STALE_US) {
                 if (config->restart_on_input_loss) return DT_BRIDGE_INPUT_LOST;
                 connected = 0;
@@ -117,7 +117,7 @@ int dt_bridge_run(DtTransport *t, DtVirtualPad *pad,
                 ++stats->read_errors; connected = 0; force_neutral = 1;
                 dt_log("physical input lost; keeping virtual device and retrying\n");
             } else if (ret > 0) {
-                if (dt_ds3_decode(&report, &state) == 0) {
+                if (dt_controller_decode(&report, &state) == 0) {
                     ++stats->valid; last_input = now; has_input = 1;
                 } else ++stats->invalid;
             }

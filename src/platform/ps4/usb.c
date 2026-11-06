@@ -4,6 +4,7 @@
 #include "dt/ps4_usb_probe.h"
 #endif
 #include "usbd_abi.h"
+#include "dualsense_usb.h"
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,10 +22,13 @@ typedef struct {
     void *module;
     DtUsbHandle *handle;
     int initialized, claimed, interface;
+    DtReportFormat format;
     uint8_t endpoint, output_endpoint;
     uint64_t reads, empty, timeouts, reports, errors, bytes;
     int last_result, last_size;
     uint64_t read_us, min_us, max_us, next_read_log;
+    DtDualSenseUsb *dualsense;
+    int fatal;
 } DtUsb;
 
 static int enable_stream(DtUsb *u)
@@ -95,13 +99,18 @@ static int disconnect_device(DtUsb *u)
         int result = u->api.release(u->handle, u->interface);
         dt_log("release interface: %d\n", result);
         if (result != 0) status = 1;
+        else u->claimed = 0;
     }
+    /* The owner closes VDA first. Restore while this handle still pins its
+     * connection; a confirmed unplug must never write into its replacement. */
+    if (dt_ps4_dualsense_usb_end(&u->dualsense) != 0) status = 1;
+    if (status) u->fatal = 1;
     if (u->handle) u->api.close(u->handle);
     u->claimed = 0; u->handle = NULL;
     u->reads = u->empty = u->timeouts = u->reports = u->errors = u->bytes = 0;
     u->last_result = u->last_size = 0;
     u->read_us = u->min_us = u->max_us = u->next_read_log = 0;
-    return status;
+    return status || u->fatal;
 }
 
 static int cleanup(DtUsb *u)
@@ -137,7 +146,7 @@ static int find_endpoint(DtUsb *u, const DtUsbConfig *config)
                 const DtUsbEndpoint *ep = &alt->endpoints[e];
                 if ((ep->attributes & 3) != 3) continue;
                 if (!(ep->address & 0x80) && ep->max_packet >= 1) output = ep->address;
-                if ((ep->address & 0x80) && (ep->attributes & 3) == 3 && ep->max_packet >= 49) {
+                if ((ep->address & 0x80) && (ep->attributes & 3) == 3 && ep->max_packet >= (u->format == DT_REPORT_DUALSENSE_USB ? 64 : 49)) {
                     input = ep->address;
                 }
             }
@@ -158,6 +167,22 @@ static int find_endpoint(DtUsb *u, const DtUsbConfig *config)
     return -1;
 }
 
+static int supported_product(uint16_t product)
+{
+#if defined(DT_USB_PROBE) || defined(DT_USB_DS3_ONLY)
+    /* Historical DS3 diagnostics and pairing tools retain their target. */
+    return product == 0x0268;
+#else
+    return product == 0x0268 || product == 0x0ce6;
+#endif
+}
+
+static int supported_controller(const DtUsbDescriptor *desc)
+{
+    return desc->vendor == 0x054c && supported_product(desc->product) &&
+        (desc->product != 0x0ce6 || dt_ps4_dualsense_usb_supported(desc->device));
+}
+
 static int scan(DtUsb *u)
 {
     DtUsbDevice **list = NULL;
@@ -168,13 +193,16 @@ static int scan(DtUsb *u)
         if (list) u->api.free_list(list, 1);
         return count < 0 || count > 256 ? -1 : 0;
     }
+    /* Deterministic wired priority preserves DS3 when both are attached. */
+    for (unsigned priority=0; priority<2 && !result; ++priority)
     for (int i = 0; i < count && !result; ++i) {
         DtUsbDescriptor desc;
         if (u->api.descriptor(list[i], &desc) != 0 ||
-            desc.vendor != 0x054c || desc.product != 0x0268) continue;
+            !supported_controller(&desc) || desc.product != (priority ? 0x0ce6 : 0x0268)) continue;
         DtUsbConfig *config = NULL;
         int ret = u->api.config(list[i], &config);
-        dt_log("Sony DS3 054c:0268 active config=%d\n", ret);
+        u->format = desc.product == 0x0ce6 ? DT_REPORT_DUALSENSE_USB : DT_REPORT_DS3;
+        dt_log("Sony controller 054c:%04x active config=%d\n", desc.product, ret);
         if (ret != 0) { result = -1; break; }
         int found = find_endpoint(u, config);
         u->api.free_config(config);
@@ -182,11 +210,25 @@ static int scan(DtUsb *u)
         ret = u->api.open(list[i], &u->handle);
         dt_log("open=%d handle=%s\n", ret, u->handle ? "present" : "missing");
         if (ret != 0 || !u->handle) { result = -1; break; }
-        /* Do not detach native drivers or reset the USB device in this probe. */
+        if (u->format == DT_REPORT_DUALSENSE_USB) {
+            ret=dt_ps4_dualsense_usb_begin(&u->dualsense,u->module,u->handle,&u->api,u->interface,u->endpoint);
+            if(ret!=0) {
+                dt_log("DualSense USB configuration window unavailable result=%d; activation stopped\n",ret);
+                u->fatal=1;result=-1;break;
+            }
+        }
+        /* No native-driver detach, pairing writes or device reset. */
         ret = u->api.claim(u->handle, u->interface);
         dt_log("claim=%d (0x%08x)\n", ret, (uint32_t)ret);
         if (ret != 0) { result = -1; break; }
         u->claimed = 1;
+        if (u->format == DT_REPORT_DUALSENSE_USB) {
+            /* Report 1 after the guarded per-device configuration window.
+             * DS3 activation and pairing commands never apply to DualSense. */
+            dt_log("DualSense USB ready; no DS3 activation commands\n");
+            result = 1;
+            continue;
+        }
         unsigned char feature[17] = {0};
 #ifdef DT_USB_PROBE
         uint64_t control_start = dt_now_us();
@@ -237,12 +279,13 @@ static int read_report(void *context, DtInputReport *out, unsigned timeout_ms)
 {
     DtUsb *u = context;
     int32_t transferred = 0;
-    if (!u->handle || !timeout_ms || timeout_ms > 1000) return -1;
+    unsigned read_size = u->format == DT_REPORT_DUALSENSE_USB ? 64u : DT_USB_READ_SIZE;
+    if (!out || !u->handle || !timeout_ms || timeout_ms > 1000) return -1;
 #ifdef DT_USB_PROBE
     uint64_t read_start = dt_now_us();
 #endif
     int ret = u->api.interrupt(u->handle, u->endpoint, out->data,
-                               DT_USB_READ_SIZE, &transferred, timeout_ms);
+                               (int32_t)read_size, &transferred, timeout_ms);
     ++u->reads; u->last_result = ret; u->last_size = transferred;
 #ifdef DT_USB_PROBE
     uint64_t read_end = dt_now_us();
@@ -270,12 +313,13 @@ static int read_report(void *context, DtInputReport *out, unsigned timeout_ms)
                               (uint32_t)ret, transferred, timeout_ms);
         ++u->empty; return 0;
     }
-    if ((size_t)transferred > DT_USB_READ_SIZE) { ++u->errors; return -1; }
+    if ((size_t)transferred > read_size) { ++u->errors; return -1; }
     if (!u->reports) dt_log("USB first frame bytes=%d report_id=0x%02x result=0x%08x\n",
                             transferred, out->data[0], (uint32_t)ret);
     ++u->reports; u->bytes += (unsigned)transferred;
     out->size = (size_t)transferred;
     out->timestamp_us = dt_now_us();
+    out->format = u->format;
     return 1;
 }
 
@@ -283,7 +327,7 @@ static int read_report(void *context, DtInputReport *out, unsigned timeout_ms)
 int dt_ps4_usb_probe_enable_stream(DtTransport *transport)
 {
     DtUsb *u = transport ? transport->context : NULL;
-    if (!u || !u->handle) return -1;
+    if (!u || !u->handle || u->format != DT_REPORT_DS3) return -1;
     return enable_stream(u);
 }
 
@@ -319,10 +363,16 @@ void dt_ps4_usb_probe_status(DtTransport *transport)
 static int reconnect(void *context)
 {
     DtUsb *u = context;
-    disconnect_device(u);
+    if (u->fatal || disconnect_device(u)!=0) return -1;
     int ret = scan(u);
     if (ret <= 0) disconnect_device(u); /* Also clean partial claim/F2/F5 failure. */
     return ret;
+}
+
+int dt_ps4_usb_status(const DtTransport *t)
+{
+    const DtUsb *u=t?t->context:NULL;
+    return u && !u->fatal ? 0 : -1;
 }
 
 static const DtTransportOps ops = { read_report, NULL, close_transport, reconnect };
@@ -339,6 +389,7 @@ int dt_ps4_usb_present(DtTransport *t)
 {
     if (!t || t->ops != &ops || !t->context) return -1;
     DtUsb *u = t->context;
+    if (u->fatal) return -1;
     DtUsbDevice **list = NULL;
     int64_t count = u->api.list(&list);
     int result = 0;
@@ -349,7 +400,7 @@ int dt_ps4_usb_present(DtTransport *t)
     for (int64_t i = 0; i < count && !result; ++i) {
         DtUsbDescriptor desc;
         if (u->api.descriptor(list[i], &desc) == 0 &&
-            desc.vendor == 0x054c && desc.product == 0x0268) result = 1;
+            supported_controller(&desc)) result = 1;
     }
     u->api.free_list(list, 1);
     return result;
@@ -375,7 +426,7 @@ int dt_ps4_usb_open(DtTransport *out, uint64_t deadline_us)
         if (found) { *out = (DtTransport){DT_TRANSPORT_USB, &ops, u}; return 0; }
         usleep(500000);
     }
-    dt_log("DS3 not found before scan deadline\n");
+    dt_log("supported controller not found before scan deadline\n");
     close_transport(u);
     memset(out, 0, sizeof(*out));
     return -1;
@@ -385,7 +436,7 @@ int dt_ps4_usb_pairing_read(DtTransport *t, uint8_t identity[6], uint8_t host[6]
 {
     if (!t || t->ops!=&ops || !t->context) return -1;
     DtUsb *u=t->context;
-    if (!u->handle || !u->claimed) return -1;
+    if (!u->handle || !u->claimed || u->format != DT_REPORT_DS3) return -1;
     uint8_t f2[17]={0}, f5[8]={0};
     int a=u->api.control(u->handle,0xa1,1,0x03f2,(uint16_t)u->interface,f2,sizeof(f2),250);
     int b=a==17 ? u->api.control(u->handle,0xa1,1,0x03f5,(uint16_t)u->interface,f5,sizeof(f5),250) : -1;
@@ -398,7 +449,7 @@ int dt_ps4_usb_pairing_write(DtTransport *t, const uint8_t host[6])
 {
     if (!t || t->ops!=&ops || !t->context) return -1;
     DtUsb *u=t->context;
-    if (!u->handle || !u->claimed) return -1;
+    if (!u->handle || !u->claimed || u->format != DT_REPORT_DS3) return -1;
     uint8_t f5[8]={1,0}; memcpy(f5+2,host,6);
     int ret=u->api.control(u->handle,0x21,9,0x03f5,(uint16_t)u->interface,f5,sizeof(f5),250);
     memset(f5,0,sizeof(f5)); dt_log("USB pairing write F5=%d; value omitted\n",ret);

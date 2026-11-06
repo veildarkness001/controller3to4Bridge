@@ -39,7 +39,7 @@ int dt_test_ioctl(int fd, unsigned long command, ...)
 {
     assert(fd==17); ++ioctl_calls;
     const AdmissionPatch *patches=command==DT_BT_REGISTER_DS3 ? register_patches : unregister_patches;
-    for (unsigned i=0;i<3;++i) assert(!memcmp(code+patches[i].offset-0x5b6000,patches[i].after,patches[i].length));
+    for (unsigned i=0;i<3;++i) assert(!memcmp(code+(patches[i].offset-0x5b6000),patches[i].after,patches[i].length));
     if (foreign_change) code[patches[2].offset-0x5b6000]=0x90;
     return native_error ? (int)UINT32_C(0x802f3701) : 0;
 }
@@ -47,8 +47,8 @@ static void reset(void)
 {
     memset(code,0xcc,sizeof(code));
     for (unsigned i=0;i<3;++i) {
-        memcpy(code+register_patches[i].offset-0x5b6000,register_patches[i].before,register_patches[i].length);
-        memcpy(code+unregister_patches[i].offset-0x5b6000,unregister_patches[i].before,unregister_patches[i].length);
+        memcpy(code+(register_patches[i].offset-0x5b6000),register_patches[i].before,register_patches[i].length);
+        memcpy(code+(unregister_patches[i].offset-0x5b6000),unregister_patches[i].before,unregister_patches[i].length);
     }
     memcpy(original,code,sizeof(code));
     writes=read_calls=ioctl_calls=fail_write=fail_read=0;wrong_fw=native_error=foreign_change=0;
