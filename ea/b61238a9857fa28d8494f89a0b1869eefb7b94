@@ -1,0 +1,111 @@
+CHANGELOG.md
+  s_c1cad93ad928ec::t_0ee8de3976bf9e 3-26
+README.md
+  s_c1cad93ad928ec::t_60885a5533cd75 13-27,56-59,84-85,96-104,115
+THIRD_PARTY.md
+  s_c1cad93ad928ec::t_7dde11b85856f9 41-59
+include/dt/controller_bluetooth.h
+  s_abac7d25ab9074::t_d14674aee5d501 1-15
+include/dt/dualsense.h
+  s_abac7d25ab9074::t_d1f4ac4749d2ac 1-28
+include/dt/ps4_dualsense_bluetooth.h
+  s_abac7d25ab9074::t_8db93eec4db0ee 1-24
+src/app/bridge_session.c
+  s_abac7d25ab9074::t_03afa88ad2a4bc 46,120
+src/app/controller_profile.c
+  s_abac7d25ab9074::t_ef85c2e5d945e9 1-42
+src/platform/ps4/controller_bluetooth.c
+  s_abac7d25ab9074::t_12460f3766af7c 1-23
+src/platform/ps4/dualsense_bluetooth.c
+  s_abac7d25ab9074::t_fdd83041191267 1-220
+src/platform/ps4/dualsense_bluetooth_window.c
+  s_abac7d25ab9074::t_25c1c437d08e46 1-72
+src/platform/ps4/log.c
+  s_abac7d25ab9074::t_2bd866ba1577df 67-71
+src/protocol/controller.c
+  s_abac7d25ab9074::t_6e10618615fd78 1-12
+src/protocol/dualsense.c
+  s_abac7d25ab9074::t_40288c85f56664 1-117
+src/transport/dualsense_bluetooth.c
+  s_abac7d25ab9074::t_a95d3e0da0e24a 1-71
+tests/bluetooth_admission_test.c
+  s_abac7d25ab9074::t_346956960876d6 42,50-51
+tests/controller_bluetooth_test.c
+  s_abac7d25ab9074::t_8016a5bc2d72bd 1-35
+tests/controller_profile_test.c
+  s_abac7d25ab9074::t_78e887062c5df0 1-29
+tests/dualsense_bluetooth_test.c
+  s_abac7d25ab9074::t_608f0f190d7bef 1-53
+tests/dualsense_bluetooth_window_test.c
+  s_abac7d25ab9074::t_60d9e5f6222712 1-59
+tests/dualsense_fixtures.h
+  s_abac7d25ab9074::t_2cd33c2eaf3647 1-10
+tests/dualsense_test.c
+  s_abac7d25ab9074::t_c2928a95c61d80 1-96
+tests/log_test.c
+  s_abac7d25ab9074::t_d78beb8a3fe23d 9-19
+tests/ps4_dualsense_bluetooth_test.c
+  s_abac7d25ab9074::t_95194a92b8de24 1-110
+tests/ps4_dualsense_usb_test.c
+  s_c1cad93ad928ec::t_d2c20b40e68996 1-106
+tests/usb_test.c
+  s_c1cad93ad928ec::t_0a64106726b242 6,15-27,56,70,115,271-321
+VERSION
+  s_c1cad93ad928ec::t_161f4f2c073642 1
+include/dt/auto_transport.h
+  s_c1cad93ad928ec::t_2ab05b90cb9184 13-14
+include/dt/controller.h
+  s_abac7d25ab9074::t_e25e6340d26e24 16-20,25-28,33,57-58
+include/dt/ps4_usb.h
+  s_c1cad93ad928ec::t_1479b2775f8cfa 13-14
+src/app/unified_bridge.c
+  s_c1cad93ad928ec::t_d7a6b694925dad 4,15,18-19,21-22,31-35,43,49-51,53,62,64,68-69,71
+src/output/ps4_mapping.c
+  s_abac7d25ab9074::t_b1c62530860a8b 56-69
+src/platform/ps4/dualsense_usb.c
+  s_c1cad93ad928ec::t_c0b6cc16fe4c7b 1-139
+src/platform/ps4/dualsense_usb.h
+  s_c1cad93ad928ec::t_4836fa2ae86bfe 1-32
+src/platform/ps4/dualsense_usb_window.c
+  s_c1cad93ad928ec::t_570d0ee4233c36 1-58
+src/platform/ps4/usb.c
+  s_c1cad93ad928ec::t_68d9b42ba853d1 7,25,30-31,102,104-107,113,149,170-185,196-197,201,204-205,213-220,225-231,282-283,288,316,322,330,366,372-377,392,403,429,439,452
+src/protocol/ds3.c
+  s_abac7d25ab9074::t_0cbd6e13ccbf3d 8-9
+src/transport/auto.c
+  s_c1cad93ad928ec::t_c593450dcfa6bb 7-8
+tests/auto_transport_test.c
+  s_c1cad93ad928ec::t_7c5fbcae81054c 37-53,111-120
+tests/dualsense_usb_window_test.c
+  s_c1cad93ad928ec::t_fe32790c070efb 1-77
+tests/include/ps4/kernel.h
+  s_c1cad93ad928ec::t_895022f98b0809 10-11
+tests/unified_lifecycle_test.c
+  s_c1cad93ad928ec::t_357a8f605429d7 18,51,60-61,64,70,72,74-75,85,94,104,126,131,135,145,149-151
+tools/build.py
+  s_c1cad93ad928ec::t_98b3720cfaf72a 26,28-43,97-98,104-105,109-111,133-134,266-272,279,299,352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "eab61238a9857fa28d8494f89a0b1869eefb7b94",
+  "prompts": {},
+  "sessions": {
+    "s_abac7d25ab9074": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1ac93-1d18-7233-9737-fad3868f56f9",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "veil.darkness <veil.darkness@proton.me>"
+    },
+    "s_c1cad93ad928ec": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1afae-0182-7940-9562-a59bbcc00ad3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "veil.darkness <veil.darkness@proton.me>"
+    }
+  }
+}
