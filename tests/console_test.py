@@ -45,9 +45,10 @@ class ConsoleTests(unittest.TestCase):
                 {'version':version,'sha256':hashlib.sha256(data).hexdigest()}))
             (self.root / f'outputs/dualshock-to-ps4-{label}-{version}.elf').write_bytes(data)
         FakeFTP.files = {}
-    def invoke(self, action, kind='diagnostic'):
+    def invoke(self, action, kind='diagnostic', version=None):
         args = ['console.py', action, '--host', 'test.invalid', '--run', 'test']
         if kind: args += ['--kind', kind]
+        if version: args += ['--version', version]
         with patch.object(console, 'ROOT', self.root), patch.object(console, 'FTP', FakeFTP), \
              patch('sys.argv', args), contextlib.redirect_stdout(io.StringIO()), \
              contextlib.redirect_stderr(io.StringIO()):
@@ -100,6 +101,17 @@ class ConsoleTests(unittest.TestCase):
         with patch.object(console.socket, 'create_connection') as connect:
             with self.assertRaises(SystemExit): self.invoke('send', 'unified-bridge')
             connect.assert_not_called()
+
+    def test_versioned_unified_bridge_artifact_is_selected_explicitly(self):
+        data = b'unified-1.4.3'
+        (self.root / 'outputs/controller-3-to-4-bridge-1.4.3.build.json').write_text(json.dumps(
+            {'version':'1.4.3','sha256':hashlib.sha256(data).hexdigest()}))
+        (self.root / 'outputs/controller-3-to-4-bridge-1.4.3.elf').write_bytes(data)
+        self.invoke('stage', 'unified-bridge', '1.4.3')
+        self.assertEqual(FakeFTP.files['controller-3-to-4-bridge-1.4.3.elf'], data)
+        record = json.loads((self.root/'work/runs/test/deployment.json').read_text())
+        self.assertEqual(record['version'], '1.4.3')
+        self.assertEqual(record['sha256'], hashlib.sha256(data).hexdigest())
 
     def test_probe_is_separate_from_original_diagnostic(self):
         FakeFTP.files['/data/dualshock_to_ps4/usb-probe.log'] = b'previous probe'

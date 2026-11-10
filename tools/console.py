@@ -16,6 +16,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=["stage", "send", "fetch", "stop"])
     parser.add_argument("--kind", choices=["bridge", "diagnostic", "probe", "bluetooth-probe", "bluetooth-bridge", "unified-bridge"], default="bridge")
+    parser.add_argument("--version", help="Select a versioned unified-bridge artifact")
     parser.add_argument("--host", required=True)
     parser.add_argument("--run", required=True, help="Local run identifier (directory below work/runs)")
     args = parser.parse_args()
@@ -35,8 +36,21 @@ def main():
     }[args.kind]
     log_name = metadata_name + ".log"
     final_marker = "bridge finished status=" if args.kind in ("bridge", "bluetooth-bridge", "unified-bridge") else "finished status="
-    meta = json.loads((ROOT / "outputs" / (metadata_name + "-build.json")).read_text())
-    name = f"dualshock-to-ps4-{label}-{meta['version']}.elf"
+    if args.version and args.kind != "unified-bridge":
+        parser.error("--version is currently supported only for unified-bridge")
+    if args.version and (not args.version[0].isdigit() or any(c not in "0123456789." for c in args.version)):
+        parser.error("Invalid version")
+    if args.version:
+        meta_path = ROOT / "outputs" / f"controller-3-to-4-bridge-{args.version}.build.json"
+        name = f"controller-3-to-4-bridge-{args.version}.elf"
+    else:
+        meta_path = ROOT / "outputs" / (metadata_name + "-build.json")
+        name = None
+    meta = json.loads(meta_path.read_text())
+    if args.version and meta.get("version") != args.version:
+        raise SystemExit("Versioned build metadata does not match requested version")
+    if name is None:
+        name = f"dualshock-to-ps4-{label}-{meta['version']}.elf"
     data = (ROOT / "outputs" / name).read_bytes()
     if hashlib.sha256(data).hexdigest() != meta["sha256"]:
         raise SystemExit("ELF does not match build metadata")

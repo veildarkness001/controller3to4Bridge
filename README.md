@@ -10,16 +10,16 @@ The 1.2.3 ELF was tested with **PS4 firmware 13.52, GoldHEN v2.4b18.12, and an o
 
 Bluetooth requires a DS3 already paired to the PS4; initial pairing is not included. USB does not require Bluetooth pairing. Rumble is not implemented.
 
-**Development candidate 1.4.2 combines DS3 and original Sony DualSense (`054c:0ce6`) over USB and internal Bluetooth in one ELF.** DualSense USB is restricted to PS4 firmware 13.52 and the checked controller revision (`bcdDevice=0x0100`); other revisions/firmware are ignored by this USB path. DS3 USB keeps priority when both wired models are attached. Choose one Bluetooth profile before starting the bridge; DS3 and DualSense native listeners cannot run together. One physical controller is selected at a time.
+**Development candidate 1.4.3 combines DS3 and original Sony DualSense (`054c:0ce6`) over USB and internal Bluetooth in one ELF.** DualSense USB is restricted to PS4 firmware 13.52 and the checked controller revision (`bcdDevice=0x0100`); other revisions/firmware are ignored by this USB path. DS3 USB keeps priority when both wired models are attached. Bluetooth automatically searches for DS3 and DualSense using exclusive listeners; only one native listener runs at a time. One physical controller is selected at a time.
 
 | Controller | USB | Internal Bluetooth |
 | --- | --- | --- |
-| Original Sony DS3 | Supported | DS3 profile, already paired |
-| Original Sony DualSense | Candidate 1.4.2: PS4 13.52, checked revision 0x0100 | DualSense profile, basic controls |
+| Original Sony DS3 | Supported | Automatic discovery, already paired |
+| Original Sony DualSense | Candidate 1.4.3: PS4 13.52, checked revision 0x0100 | Automatic discovery, basic controls |
 
 DualSense Bluetooth in the integrated 1.4.1 ELF was checked on PS4 13.52: user selection, menus, brief gameplay, deliberate menu power-off/reactivation and disconnect/recovery, followed by verified clean shutdown. The run ended with 17,932 valid reports, no invalid reports, three physical sessions and one read error during the deliberate disconnect tests. DS3 USB was also checked with user selection, brief gameplay and clean shutdown while the DualSense Bluetooth profile remained selected; no Bluetooth backend was created. DS3 Bluetooth also passed user selection, brief gameplay and verified cleanup with the same ELF. Transport changes in this candidate, long sessions, rest mode and other firmware remain pending. The first experimental 1.4.0 USB candidate load was followed by a console power-off whose cause remains unknown; that binary is retained as a failed development candidate.
 
-A separate DualSense USB diagnostic on PS4 13.52 completed user selection, menus and brief gameplay: 78,760 valid reports over 189 seconds, with zero invalid reports, read errors or stale-stream events. Shutdown verified virtual-device deletion, permissions and the original per-device USB state. **The integrated 1.4.2 ELF has not yet been tested on console.** Its unplug/reconnect, transport changes and DS3 regressions require hardware checks; host simulations do not establish these results.
+A separate DualSense USB diagnostic on PS4 13.52 completed user selection, menus and brief gameplay: 78,760 valid reports over 189 seconds, with zero invalid reports, read errors or stale-stream events. Shutdown verified virtual-device deletion, permissions and the original per-device USB state. The integrated 1.4.2 ELF subsequently completed a user-confirmed DualSense USB → Bluetooth → USB cycle with the DualSense profile. The exact 1.4.3 ELF has now passed minimum console smoke checks on PS4 13.52 with GoldHEN v2.4b18.12: DS3 and DualSense each reached user selection and accepted controls over USB and internal Bluetooth. The run ended with 61,433 valid reports, zero invalid reports, and clean restoration. This is a beta-level check only; long sessions, rest mode, other firmware and controller revisions, simultaneous physical DS4 use, and full touch/motion behavior remain unverified.
 
 DualSense basic Bluetooth mode maps face buttons, D-pad, sticks, shoulders, analog triggers and PS to PS4. Create maps directly to Share, Options to Options, and the touchpad button maps to its click. Create leaves the right stick and R3 independent. **Touch positions, gestures and motion are unavailable in this mode.** USB uses the full 64-byte report and maps native touch contacts; touch positions and gestures have not been separately verified on console. Automatic requests for enhanced Bluetooth mode remain disabled by default because continuous wireless input has only been established in basic mode. Raw motion samples are not converted to PS4 motion input.
 
@@ -53,9 +53,11 @@ Release Select to use the right stick normally again. Touchpad emulation support
 
 For Bluetooth, hold **PS** and open **Sound/Devices → Turn Off Device** to turn off the DS3. It appears as **DUALSHOCK 4**; pressing **PS** activates it again. With USB connected, this action disables virtual input until you unplug the cable. A physical DS4 can have the same menu name, so the name alone does not distinguish them. One Bluetooth menu power-off and PS reactivation cycle was confirmed on PS4 with 1.2.2. Wired menu power-off and coexistence with an active physical DS4 remain untested.
 
-For development candidate 1.4.2, choose the Bluetooth controller with the bridge stopped. Upload a small plain-text file named **`/data/dualshock_to_ps4/bluetooth-controller`** containing `dualsense` or `ds3`. A missing file defaults to `ds3`; an invalid file stops activation. DS3 USB and the supported DualSense USB path work in either profile without Bluetooth pairing. USB takes priority; when both wired models are connected, DS3 is selected first. Restart the bridge after changing profiles.
+Development candidate 1.4.3 searches for DS3 and DualSense Bluetooth input automatically. Before acquiring input it alternates ten-second listening slots, fully restoring one native backend before starting the other. Once valid input arrives it keeps that model for the session, with no session time limit. Initial discovery can take a slot plus connection/cleanup time; if a controller stops trying before its slot, press PS again. This timing and first-press behavior still require hardware validation. Only one controller is selected at a time.
 
-For the first DualSense Bluetooth registration, start the bridge with the `dualsense` profile while the controller is unplugged, then use PS4 **Settings → Devices → Bluetooth Devices**. Put the DualSense into pairing mode with **Create + PS**, select **Wireless Controller**, and accept **Yes** promptly. After registration, press **PS** to reconnect and choose a PS4 user. The DS3 profile retains its existing pairing requirement. Keep the development candidate out of AutoRun while its remaining hardware checks are pending.
+No profile edit is required: a missing **`/data/dualshock_to_ps4/bluetooth-controller`** or the value `auto` uses automatic discovery, starting with the last model selected during this process (DS3 initially). Existing `ds3` and `dualsense` files are accepted as a first-model preference; both models remain eligible. Invalid configuration still stops activation. USB takes priority without Bluetooth pairing; DS3 wins when both wired models are attached.
+
+For the first DualSense Bluetooth registration, start the bridge while the controller is unplugged and allow its DualSense discovery slot, then use PS4 **Settings → Devices → Bluetooth Devices**. Put the DualSense into pairing mode with **Create + PS**, select **Wireless Controller**, and accept **Yes** promptly. After registration, press **PS** to reconnect and choose a PS4 user. DS3 still requires prior pairing. Keep the development candidate out of AutoRun while its remaining hardware checks are pending.
 
 See [CHANGELOG.md](CHANGELOG.md) for release changes.
 
@@ -100,7 +102,7 @@ python3 tools/build.py test
 python3 tools/build.py release --preserve-latest
 ```
 
-Keep the candidate out of AutoRun until the integrated 1.4.2 hardware checks are complete, including DS3 regressions, DualSense USB reconnection and USB/Bluetooth changes. The isolated USB diagnostic establishes initial compatibility, not validation of this new ELF.
+Keep beta 1.4.3 out of AutoRun until broader testing is complete. The current smoke checks establish basic control for both models over USB and Bluetooth on one PS4/controller setup; they do not establish long-term stability, rest-mode recovery, broader firmware/revision compatibility, or simultaneous physical DS4 coexistence. The isolated USB diagnostic remains separate evidence from the integrated ELF.
 
 ## Acknowledgements
 

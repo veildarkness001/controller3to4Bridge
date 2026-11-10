@@ -15,7 +15,7 @@
 enum { NORMAL, USB_ONLY, USB_CREATE_FAIL, BT_ROLLBACK_FAIL, WAIT_STOP,
        BT_FAULT, PAD_OPEN_FAIL, PAD_CLOSE_FAIL, BT_CLOSE_FAIL, BT_POWER,
        USB_POWER, USB_POWER_STOP, TRANSPORT_CHANGE, WAIT_LOSS, USB_CLOSE_FAIL,
-       LOSS_PAD_CLOSE_FAIL, LOSS_BT_CLOSE_FAIL, USB_RACE, USB_PROBE_FAIL, PROFILE_INVALID, DUALSENSE_PROFILE, USB_FATAL };
+       LOSS_PAD_CLOSE_FAIL, LOSS_BT_CLOSE_FAIL, USB_RACE, USB_PROBE_FAIL, PROFILE_INVALID, DUALSENSE_PROFILE, USB_FATAL, AUTO_PROFILE };
 static int scenario, live_usb, live_bt, live_pad, runs, creates, pad_closes, destroys;
 static int stop_file, unplugs, bt_creates;
 static DtAutoTransport *selection;
@@ -58,10 +58,10 @@ int dt_ps4_usb_destroy(DtTransport *t)
     return scenario == USB_CLOSE_FAIL ? -1 : 0;
 }
 int dt_ps4_usb_status(const DtTransport *t) {(void)t;return scenario==USB_FATAL?-1:0;}
-int dt_controller_bluetooth_create(DtTransport *t,DtBluetoothController controller)
+int dt_controller_bluetooth_auto_create(DtTransport *t,DtBluetoothController controller)
 {
     assert(live_usb && !live_pad && !live_bt);
-    assert(controller==(scenario==DUALSENSE_PROFILE?DT_BT_CONTROLLER_DUALSENSE:DT_BT_CONTROLLER_DS3));
+    assert(controller==(scenario==AUTO_PROFILE?DT_BT_CONTROLLER_AUTO:scenario==DUALSENSE_PROFILE?DT_BT_CONTROLLER_DUALSENSE:DT_BT_CONTROLLER_DS3));
     ++bt_creates;
     if (scenario == BT_ROLLBACK_FAIL) return -2;
     if (scenario == USB_ONLY) return -1;
@@ -123,7 +123,7 @@ int dt_bridge_run(DtTransport *t, DtVirtualPad *p, const DtBridgeConfig *c, DtBr
 }
 int main(void)
 {
-    for (scenario = NORMAL; scenario <= USB_FATAL; ++scenario) {
+    for (scenario = NORMAL; scenario <= AUTO_PROFILE; ++scenario) {
         live_usb = live_bt = live_pad = runs = creates = pad_closes = destroys = 0;
         stop_file = unplugs = bt_creates = 0;
         int result = dt_unified_main();
@@ -148,4 +148,4 @@ int main(void)
 }
 
 int dt_bluetooth_profile_load(DtBluetoothController *out)
-{if(scenario==PROFILE_INVALID)return -1;*out=scenario==DUALSENSE_PROFILE?DT_BT_CONTROLLER_DUALSENSE:DT_BT_CONTROLLER_DS3;return 0;}
+{if(scenario==PROFILE_INVALID)return -1;*out=scenario==AUTO_PROFILE?DT_BT_CONTROLLER_AUTO:scenario==DUALSENSE_PROFILE?DT_BT_CONTROLLER_DUALSENSE:DT_BT_CONTROLLER_DS3;return 0;}

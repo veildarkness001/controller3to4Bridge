@@ -12,6 +12,7 @@ int main(void)
     DtBluetoothController model=99;
     assert(dt_bluetooth_profile_parse("ds3",3,&model)==0 && model==DT_BT_CONTROLLER_DS3);
     assert(dt_bluetooth_profile_parse(" \tdualsense\r\n",13,&model)==0 && model==DT_BT_CONTROLLER_DUALSENSE);
+    assert(dt_bluetooth_profile_parse("auto",4,&model)==0 && model==DT_BT_CONTROLLER_AUTO);
     const char *bad[]={""," ","dualshock4","DUALSENSE","ds3 dualsense","ds3\ntrailing"};
     for(unsigned i=0;i<sizeof(bad)/sizeof(bad[0]);++i) {
         model=99;assert(dt_bluetooth_profile_parse(bad[i],strlen(bad[i]),&model)==-1 && model==99);
@@ -19,7 +20,8 @@ int main(void)
     const char embedded[]={'d','s','3',0};
     assert(dt_bluetooth_profile_parse(embedded,sizeof(embedded),&model)==-1);
     assert(dt_bluetooth_profile_parse(NULL,3,&model)==-1 && dt_bluetooth_profile_parse("ds3",3,NULL)==-1);
-    (void)unlink(PROFILE);assert(dt_bluetooth_profile_load(&model)==0 && model==DT_BT_CONTROLLER_DS3);
+    (void)unlink(PROFILE);assert(dt_bluetooth_profile_load(&model)==0 && model==DT_BT_CONTROLLER_AUTO);
+    save("auto\n");assert(dt_bluetooth_profile_load(&model)==0 && model==DT_BT_CONTROLLER_AUTO);
     save("dualsense\n");assert(dt_bluetooth_profile_load(&model)==0 && model==DT_BT_CONTROLLER_DUALSENSE);
     save("ds3\n");assert(dt_bluetooth_profile_load(&model)==0 && model==DT_BT_CONTROLLER_DS3);
     save("ds4\n");model=99;assert(dt_bluetooth_profile_load(&model)==-1 && model==99);

@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.3] - 2026-11-10
+
+- Automatically search for DS3 and DualSense Bluetooth input in exclusive ten-second idle slots, restoring each backend before the next is created. Preserve USB priority and keep the chosen model pinned after its first valid report, with no session time limit.
+- Default missing Bluetooth configuration to `auto`; interpret existing `ds3`/`dualsense` values as a first-model preference in the unified app, so users do not have to edit profiles to change controllers. Remember the last automatically selected model in process memory when using `auto`.
+- Stop discovery on backend, clock, report-format or restoration errors. Preserve the acquired first report for deferred virtual-device creation; USB arrival suspends and cleans the discovery backend before wired activation.
+- Cover serial ownership, both model selections, input at a slot boundary, repeated idle rotations, eight simulated hours after acquisition, unavailable models, failed cleanup and fatal errors.
+
+Minimum console smoke checks passed on PS4 firmware 13.52 with GoldHEN v2.4b18.12 using the exact 1.4.3 ELF: DS3 USB, DS3 Bluetooth, DualSense USB, and DualSense Bluetooth each reached user selection and accepted controls. DS3 Bluetooth automatic selection and its F4 activation were confirmed in the log. The run closed with status 0, 61,433 valid reports, zero invalid reports, and restored USB/Bluetooth and host privilege state. DualSense Bluetooth selection and USB/Bluetooth recovery were also confirmed in an earlier run of the same ELF.
+
+This is a beta-level smoke check, not a long-duration or broad compatibility claim. Initial discovery may take a slot plus connection/cleanup time, and a controller whose attempt expires may need PS again. Long play, rest mode, other firmware versions, other controller revisions, simultaneous physical DS4 use, and full DualSense touch/motion behavior remain unverified.
+
 ## [1.4.2] - Unreleased
 
 - Enable the checked DualSense USB path in the unified ELF on PS4 13.52 with controller revision 0x0100, alongside DS3 USB and both existing Bluetooth profiles. DS3 wins when both wired models are attached.

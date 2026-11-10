@@ -14,7 +14,8 @@ int dt_bluetooth_profile_parse(const char *data,size_t size,DtBluetoothControlle
     while(size && space((unsigned char)*data)) {++data;--size;}
     while(size && space((unsigned char)data[size-1]))--size;
     DtBluetoothController selected;
-    if(size==3 && !memcmp(data,"ds3",3))selected=DT_BT_CONTROLLER_DS3;
+    if(size==4 && !memcmp(data,"auto",4))selected=DT_BT_CONTROLLER_AUTO;
+    else if(size==3 && !memcmp(data,"ds3",3))selected=DT_BT_CONTROLLER_DS3;
     else if(size==9 && !memcmp(data,"dualsense",9))selected=DT_BT_CONTROLLER_DUALSENSE;
     else return -1;
     *out=selected;return 0;
@@ -25,7 +26,7 @@ int dt_bluetooth_profile_load(DtBluetoothController *out)
     int fd=open(DT_BT_PROFILE_PATH,O_RDONLY);
     if(fd<0) {
         if(errno!=ENOENT)return -1;
-        *out=DT_BT_CONTROLLER_DS3;return 0;
+        *out=DT_BT_CONTROLLER_AUTO;return 0;
     }
     char buffer[33];size_t size=0;int result=-1;
     while(size<sizeof(buffer)) {

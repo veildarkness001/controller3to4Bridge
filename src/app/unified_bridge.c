@@ -32,7 +32,8 @@ static int unified_session(DtBridgeStats *stats, int *usb_power_off)
     if(dt_bluetooth_profile_load(&controller)!=0) {
         dt_log("invalid Bluetooth controller profile; activation aborted\n");goto done;
     }
-    dt_log("Bluetooth controller profile=%s\n",controller==DT_BT_CONTROLLER_DUALSENSE?"dualsense":"ds3");
+    dt_log("Bluetooth automatic discovery; first-model hint=%s\n",
+           controller==DT_BT_CONTROLLER_AUTO?"auto":controller==DT_BT_CONTROLLER_DUALSENSE?"dualsense":"ds3");
     if (dt_ps4_usb_create(&usb) != 0) goto done;
     /* Native BT temporarily owns event caps; VDA must snapshot them afterward.
      * Safe unavailability (e.g. no pairing) leaves USB available. Failed
@@ -40,7 +41,7 @@ static int unified_session(DtBridgeStats *stats, int *usb_power_off)
     int wired = dt_ps4_usb_present(&usb);
     if (wired < 0) goto done;
     if (!wired) {
-        int bt = dt_controller_bluetooth_create(&bluetooth,controller);
+        int bt = dt_controller_bluetooth_auto_create(&bluetooth,controller);
         if (bt == -2) { status = 6; goto done; }
         if (bt != 0) dt_log("Bluetooth unavailable; USB remains available for this activation\n");
     } else dt_log("USB activation; Bluetooth backend not created\n");
