@@ -1,0 +1,57 @@
+src/platform/ps4/controller_bluetooth.c
+  s_c1cad93ad928ec::t_b829fb8831e510 4-5,10,15,19,23,27-156
+src/app/unified_bridge.c
+  s_c1cad93ad928ec::t_95dd1c95a2fdc5 35-36,44
+CHANGELOG.md
+  s_9edb254778f36c::t_8ef2ed512de1ca 3-13
+tests/controller_profile_test.c
+  s_c1cad93ad928ec::t_5fcf7924dca50e 15,23-24
+tests/unified_lifecycle_test.c
+  s_c1cad93ad928ec::t_8e112c85c868e5 18,61,64,126,151
+src/app/controller_profile.c
+  s_c1cad93ad928ec::t_7f388e8863df03 17-18,29
+README.md
+  s_9edb254778f36c::t_442ee561f6cc23 13,17-18,22,56,58-60,105
+include/dt/controller_bluetooth.h
+  s_c1cad93ad928ec::t_f764670dcfb814 5-6,9-11,15-16
+tests/controller_bluetooth_test.c
+  s_c1cad93ad928ec::t_f48cc8276fa9d6 9-31,33,35-38,41-44,59-122
+VERSION
+  s_c1cad93ad928ec::t_a3e61dcc5263eb 1
+tests/console_test.py
+  s_e190960e8a8b06::t_121d4782d5a82b 48,51,105-115
+tools/console.py
+  s_e190960e8a8b06::t_414f5a9fd81084 19,39-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "902b83c74447d317f962511aa5241b1e24005b68",
+  "prompts": {},
+  "sessions": {
+    "s_9edb254778f36c": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e3abb3ce3ffethxgMOE61bOBY0",
+        "model": "gemini-3.8-flash"
+      },
+      "human_author": "veil.darkness <veil.darkness@proton.me>"
+    },
+    "s_c1cad93ad928ec": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1afae-0182-7940-9562-a59bbcc00ad3",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "veil.darkness <veil.darkness@proton.me>"
+    },
+    "s_e190960e8a8b06": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c536-745f-72b1-880e-6b14558fa50f",
+        "model": "unknown"
+      },
+      "human_author": "veil.darkness <veil.darkness@proton.me>"
+    }
+  }
+}
