@@ -1,0 +1,23 @@
+CHANGELOG.md
+  s_e190960e8a8b06::t_478acb42a6b72d 3,5-8,10,12
+README.md
+  s_e190960e8a8b06::t_9bcbe96c23b49b 5,7,11,16,24-32,34,43,48,50,64,69,71,97
+VERSION
+  s_e190960e8a8b06::t_f1a3ade3f31b05 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4f3b9ee7f52f85d34bc4ef1f108840d2301208fb",
+  "prompts": {},
+  "sessions": {
+    "s_e190960e8a8b06": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1c536-745f-72b1-880e-6b14558fa50f",
+        "model": "unknown"
+      },
+      "human_author": "veil.darkness <veil.darkness@proton.me>"
+    }
+  }
+}
